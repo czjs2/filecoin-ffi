@@ -29,7 +29,7 @@ bellperson = { version = "0.5", features = ["gpu"] }
 
 [dependencies.filecoin-proofs-api]
 git = "https://github.com/filecoin-project/rust-filecoin-proofs-api.git"
-branch = "master"
+branch = "experiments"
 
 [build-dependencies]
 cbindgen = "= 0.10.0"
