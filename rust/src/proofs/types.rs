@@ -114,24 +114,6 @@ impl From<FFIRegisteredPoStProof> for RegisteredPoStProof {
 }
 
 #[repr(C)]
-#[derive(Clone, Copy)]
-pub struct FFISealPreCommitOutput {
-    pub registered_proof: FFIRegisteredSealProof,
-    pub comm_d: [u8; 32],
-    pub comm_r: [u8; 32],
-}
-
-impl Default for FFISealPreCommitOutput {
-    fn default() -> Self {
-        FFISealPreCommitOutput {
-            registered_proof: FFIRegisteredSealProof::StackedDrg32GiBV1,
-            comm_d: [0u8; 32],
-            comm_r: [0u8; 32],
-        }
-    }
-}
-
-#[repr(C)]
 #[derive(Clone)]
 pub struct FFIPublicPieceInfo {
     pub num_bytes: u64,
@@ -286,36 +268,84 @@ code_and_message_impl!(WriteWithoutAlignmentResponse);
 
 #[repr(C)]
 #[derive(DropStructMacro)]
-pub struct SealPreCommitResponse {
+pub struct SealPreCommitPhase1Response {
     pub error_msg: *const libc::c_char,
     pub status_code: FCPResponseStatus,
-    pub seal_pre_commit_output: FFISealPreCommitOutput,
+    pub seal_pre_commit_phase1_output_bytes_ptr: *const u8,
+    pub seal_pre_commit_phase1_output_bytes_len: libc::size_t,
 }
 
-impl Default for SealPreCommitResponse {
-    fn default() -> SealPreCommitResponse {
-        SealPreCommitResponse {
+impl Default for SealPreCommitPhase1Response {
+    fn default() -> SealPreCommitPhase1Response {
+        SealPreCommitPhase1Response {
             error_msg: ptr::null(),
-            seal_pre_commit_output: Default::default(),
             status_code: FCPResponseStatus::FCPNoError,
+            seal_pre_commit_phase1_output_bytes_ptr: ptr::null(),
+            seal_pre_commit_phase1_output_bytes_len: 0,
         }
     }
 }
 
-code_and_message_impl!(SealPreCommitResponse);
+code_and_message_impl!(SealPreCommitPhase1Response);
 
 #[repr(C)]
 #[derive(DropStructMacro)]
-pub struct SealCommitResponse {
+pub struct SealPreCommitPhase2Response {
+    pub error_msg: *const libc::c_char,
+    pub status_code: FCPResponseStatus,
+    pub registered_proof: FFIRegisteredSealProof,
+    pub comm_d: [u8; 32],
+    pub comm_r: [u8; 32],
+}
+
+impl Default for SealPreCommitPhase2Response {
+    fn default() -> SealPreCommitPhase2Response {
+        SealPreCommitPhase2Response {
+            error_msg: ptr::null(),
+            status_code: FCPResponseStatus::FCPNoError,
+            registered_proof: FFIRegisteredSealProof::StackedDrg1KiBV1,
+            comm_d: Default::default(),
+            comm_r: Default::default(),
+        }
+    }
+}
+
+code_and_message_impl!(SealPreCommitPhase2Response);
+
+#[repr(C)]
+#[derive(DropStructMacro)]
+pub struct SealCommitPhase1Response {
+    pub status_code: FCPResponseStatus,
+    pub error_msg: *const libc::c_char,
+    pub seal_commit_phase1_output_ptr: *const u8,
+    pub seal_commit_phase1_output_len: libc::size_t,
+}
+
+impl Default for SealCommitPhase1Response {
+    fn default() -> SealCommitPhase1Response {
+        SealCommitPhase1Response {
+            status_code: FCPResponseStatus::FCPNoError,
+            error_msg: ptr::null(),
+            seal_commit_phase1_output_ptr: ptr::null(),
+            seal_commit_phase1_output_len: 0,
+        }
+    }
+}
+
+code_and_message_impl!(SealCommitPhase1Response);
+
+#[repr(C)]
+#[derive(DropStructMacro)]
+pub struct SealCommitPhase2Response {
     pub status_code: FCPResponseStatus,
     pub error_msg: *const libc::c_char,
     pub proof_ptr: *const u8,
     pub proof_len: libc::size_t,
 }
 
-impl Default for SealCommitResponse {
-    fn default() -> SealCommitResponse {
-        SealCommitResponse {
+impl Default for SealCommitPhase2Response {
+    fn default() -> SealCommitPhase2Response {
+        SealCommitPhase2Response {
             status_code: FCPResponseStatus::FCPNoError,
             error_msg: ptr::null(),
             proof_ptr: ptr::null(),
@@ -324,7 +354,7 @@ impl Default for SealCommitResponse {
     }
 }
 
-code_and_message_impl!(SealCommitResponse);
+code_and_message_impl!(SealCommitPhase2Response);
 
 #[repr(C)]
 #[derive(DropStructMacro)]

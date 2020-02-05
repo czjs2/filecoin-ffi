@@ -26,6 +26,7 @@ rand = "0.7"
 rayon = "1.2.1"
 anyhow = "1.0.23"
 bellperson = { version = "0.5", features = ["gpu"] }
+serde_json = "1.0.46"
 
 [dependencies.filecoin-proofs-api]
 git = "https://github.com/filecoin-project/rust-filecoin-proofs-api.git"
