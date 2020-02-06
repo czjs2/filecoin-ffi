@@ -958,7 +958,7 @@ pub mod tests {
         let cache_dir = tempfile::tempdir()?;
         let cache_dir_path = cache_dir.into_path();
 
-        let challenge_count = 1;
+        let challenge_count = 2;
         let prover_id = [1u8; 32];
         let randomness = [7u8; 32];
         let sector_id = 42;
