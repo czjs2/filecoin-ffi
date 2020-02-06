@@ -766,12 +766,26 @@ pub unsafe extern "C" fn destroy_write_without_alignment_response(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn destroy_seal_pre_commit_response(ptr: *mut SealPreCommitPhase1Response) {
+pub unsafe extern "C" fn destroy_seal_pre_commit_phase1_response(
+    ptr: *mut SealPreCommitPhase1Response,
+) {
     let _ = Box::from_raw(ptr);
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn destroy_seal_commit_response(ptr: *mut SealCommitPhase1Response) {
+pub unsafe extern "C" fn destroy_seal_pre_commit_phase2_response(
+    ptr: *mut SealPreCommitPhase2Response,
+) {
+    let _ = Box::from_raw(ptr);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn destroy_seal_commit_phase1_response(ptr: *mut SealCommitPhase1Response) {
+    let _ = Box::from_raw(ptr);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn destroy_seal_commit_phase2_response(ptr: *mut SealCommitPhase2Response) {
     let _ = Box::from_raw(ptr);
 }
 
@@ -1173,8 +1187,10 @@ pub mod tests {
             }
 
             destroy_write_without_alignment_response(resp_a);
-            destroy_seal_pre_commit_response(resp_b1);
-            destroy_seal_commit_response(resp_c1);
+            destroy_seal_pre_commit_phase1_response(resp_b1);
+            destroy_seal_pre_commit_phase2_response(resp_b2);
+            destroy_seal_commit_phase1_response(resp_c1);
+            destroy_seal_commit_phase2_response(resp_c2);
             destroy_verify_seal_response(resp_d);
             destroy_unseal_response(resp_e);
             destroy_generate_candidates_response(resp_f);
