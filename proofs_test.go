@@ -116,7 +116,7 @@ func TestImportSector(t *testing.T) {
 		CommP: commPB,
 	}}
 
-	commD, err := GenerateDataCommitment(sealProofType, publicPieces)
+	preGeneratedCommD, err := GenerateDataCommitment(sealProofType, publicPieces)
 	require.NoError(t, err)
 
 	privatePieces := make([]PieceMetadata, len(publicPieces))
@@ -129,22 +129,28 @@ func TestImportSector(t *testing.T) {
 	}
 
 	// pre-commit the sector
-	output, err := SealPreCommit(sealProofType, sectorCacheDirPath, stagedSectorFile.Name(), sealedSectorFile.Name(), sectorID, proverID, ticket.TicketBytes, publicPieces)
+	sealPreCommitPhase1Output, err := SealPreCommitPhase1(sealProofType, sectorCacheDirPath, stagedSectorFile.Name(), sealedSectorFile.Name(), sectorID, proverID, ticket.TicketBytes, publicPieces)
 	require.NoError(t, err)
 
-	require.Equal(t, output.CommD, commD, "prover and verifier should agree on data commitment")
+	commR, commD, err := SealPreCommitPhase2(sealPreCommitPhase1Output, sectorCacheDirPath, sealedSectorFile.Name())
+	require.NoError(t, err)
+
+	require.Equal(t, commD, preGeneratedCommD, "prover and verifier should agree on data commitment")
 
 	// commit the sector
-	proof, err := SealCommit(sectorCacheDirPath, sectorID, proverID, ticket.TicketBytes, seed.TicketBytes, publicPieces, output)
+	sealCommitPhase1Output, err := SealCommitPhase1(sealProofType, commR, commD, sectorCacheDirPath, sectorID, proverID, ticket.TicketBytes, seed.TicketBytes, publicPieces)
+	require.NoError(t, err)
+
+	proof, err := SealCommitPhase2(sealCommitPhase1Output, sectorID, proverID)
 	require.NoError(t, err)
 
 	// verify the 'ole proofy
-	isValid, err := VerifySeal(sealProofType, output.CommR, output.CommD, proverID, ticket.TicketBytes, seed.TicketBytes, sectorID, proof)
+	isValid, err := VerifySeal(sealProofType, commR, commD, proverID, ticket.TicketBytes, seed.TicketBytes, sectorID, proof)
 	require.NoError(t, err)
 	require.True(t, isValid, "proof wasn't valid")
 
 	// unseal the entire sector and verify that things went as we planned
-	require.NoError(t, Unseal(sealProofType, sectorCacheDirPath, sealedSectorFile.Name(), unsealOutputFileA.Name(), sectorID, proverID, ticket.TicketBytes, output.CommD))
+	require.NoError(t, Unseal(sealProofType, sectorCacheDirPath, sealedSectorFile.Name(), unsealOutputFileA.Name(), sectorID, proverID, ticket.TicketBytes, commD))
 	contents, err := ioutil.ReadFile(unsealOutputFileA.Name())
 	require.NoError(t, err)
 
@@ -157,7 +163,7 @@ func TestImportSector(t *testing.T) {
 	require.Equal(t, someBytes[0:508], contents[508:1016])
 
 	// unseal just the first piece
-	err = UnsealRange(sealProofType, sectorCacheDirPath, sealedSectorFile.Name(), unsealOutputFileB.Name(), sectorID, proverID, ticket.TicketBytes, output.CommD, 0, 127)
+	err = UnsealRange(sealProofType, sectorCacheDirPath, sealedSectorFile.Name(), unsealOutputFileB.Name(), sectorID, proverID, ticket.TicketBytes, commD, 0, 127)
 	require.NoError(t, err)
 	contentsB, err := ioutil.ReadFile(unsealOutputFileB.Name())
 	require.NoError(t, err)
@@ -165,7 +171,7 @@ func TestImportSector(t *testing.T) {
 	require.Equal(t, someBytes[0:127], contentsB[0:127])
 
 	// unseal just the second piece
-	err = UnsealRange(sealProofType, sectorCacheDirPath, sealedSectorFile.Name(), unsealOutputFileC.Name(), sectorID, proverID, ticket.TicketBytes, output.CommD, 508, 508)
+	err = UnsealRange(sealProofType, sectorCacheDirPath, sealedSectorFile.Name(), unsealOutputFileC.Name(), sectorID, proverID, ticket.TicketBytes, commD, 508, 508)
 	require.NoError(t, err)
 	contentsC, err := ioutil.ReadFile(unsealOutputFileC.Name())
 	require.NoError(t, err)
@@ -186,14 +192,14 @@ func TestImportSector(t *testing.T) {
 	// the new API
 	privateInfo := NewSortedPrivateSectorInfo(PrivateSectorInfo{
 		CacheDirPath:     sectorCacheDirPath,
-		CommR:            output.CommR,
+		CommR:            commR,
 		PoStProofType:    postProofType,
 		SealedSectorPath: sealedSectorFile.Name(),
 		SectorID:         sectorID,
 	})
 
 	publicInfo := NewSortedPublicSectorInfo(PublicSectorInfo{
-		CommR:         output.CommR,
+		CommR:         commR,
 		PoStProofType: postProofType,
 		SectorID:      sectorID,
 	})

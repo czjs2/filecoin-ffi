@@ -150,8 +150,8 @@ pub unsafe extern "C" fn seal_pre_commit_phase1(
         match result {
             Ok(output) => {
                 response.status_code = FCPResponseStatus::FCPNoError;
-                response.seal_pre_commit_phase1_output_bytes_ptr = output.as_ptr();
-                response.seal_pre_commit_phase1_output_bytes_len = output.len();
+                response.seal_pre_commit_phase1_output_ptr = output.as_ptr();
+                response.seal_pre_commit_phase1_output_len = output.len();
                 mem::forget(output);
             }
             Err(err) => {
@@ -1024,8 +1024,8 @@ pub mod tests {
             }
 
             let resp_b2 = seal_pre_commit_phase2(
-                (*resp_b1).seal_pre_commit_phase1_output_bytes_ptr,
-                (*resp_b1).seal_pre_commit_phase1_output_bytes_len,
+                (*resp_b1).seal_pre_commit_phase1_output_ptr,
+                (*resp_b1).seal_pre_commit_phase1_output_len,
                 cache_dir_path_c_str,
                 sealed_path_c_str,
             );

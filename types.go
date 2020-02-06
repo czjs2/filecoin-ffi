@@ -143,35 +143,6 @@ type PrivateSectorInfo struct {
 // CommitmentBytesLen is the number of bytes in a CommR, CommD, CommP, and CommRStar.
 const CommitmentBytesLen = 32
 
-// SealPreCommitOutput is used to acquire a seed from the chain for the second
-// step of Interactive PoRep.
-type SealPreCommitOutput struct {
-	SectorID uint64
-	CommD    [CommitmentBytesLen]byte
-	CommR    [CommitmentBytesLen]byte
-	Pieces   []PieceMetadata
-	Ticket   SealTicket
-}
-
-// RawSealPreCommitOutput is used to acquire a seed from the chain for the
-// second step of Interactive PoRep.
-type RawSealPreCommitOutput struct {
-	CommD     [CommitmentBytesLen]byte
-	CommR     [CommitmentBytesLen]byte
-	ProofType RegisteredSealProof
-}
-
-// SealCommitOutput is produced by the second step of Interactive PoRep.
-type SealCommitOutput struct {
-	SectorID uint64
-	CommD    [CommitmentBytesLen]byte
-	CommR    [CommitmentBytesLen]byte
-	Proof    []byte
-	Pieces   []PieceMetadata
-	Ticket   SealTicket
-	Seed     SealSeed
-}
-
 // PieceMetadata represents a piece stored by the sector builder.
 type PieceMetadata struct {
 	Key   string

@@ -271,8 +271,8 @@ code_and_message_impl!(WriteWithoutAlignmentResponse);
 pub struct SealPreCommitPhase1Response {
     pub error_msg: *const libc::c_char,
     pub status_code: FCPResponseStatus,
-    pub seal_pre_commit_phase1_output_bytes_ptr: *const u8,
-    pub seal_pre_commit_phase1_output_bytes_len: libc::size_t,
+    pub seal_pre_commit_phase1_output_ptr: *const u8,
+    pub seal_pre_commit_phase1_output_len: libc::size_t,
 }
 
 impl Default for SealPreCommitPhase1Response {
@@ -280,8 +280,8 @@ impl Default for SealPreCommitPhase1Response {
         SealPreCommitPhase1Response {
             error_msg: ptr::null(),
             status_code: FCPResponseStatus::FCPNoError,
-            seal_pre_commit_phase1_output_bytes_ptr: ptr::null(),
-            seal_pre_commit_phase1_output_bytes_len: 0,
+            seal_pre_commit_phase1_output_ptr: ptr::null(),
+            seal_pre_commit_phase1_output_len: 0,
         }
     }
 }

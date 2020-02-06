@@ -262,8 +262,8 @@ func WriteWithoutAlignment(
 	return uint64(resPtr.total_write_unpadded), goCommitment(&resPtr.comm_p[0]), nil
 }
 
-// SealPreCommit
-func SealPreCommit(
+// SealPreCommitPhase1
+func SealPreCommitPhase1(
 	proofType RegisteredSealProof,
 	cacheDirPath string,
 	stagedSectorPath string,
@@ -272,7 +272,7 @@ func SealPreCommit(
 	proverID [32]byte,
 	ticket [32]byte,
 	pieces []PublicPieceInfo,
-) (RawSealPreCommitOutput, error) {
+) (phase1Output []byte, err error) {
 	cCacheDirPath := C.CString(cacheDirPath)
 	defer C.free(unsafe.Pointer(cCacheDirPath))
 
@@ -291,7 +291,7 @@ func SealPreCommit(
 	cPiecesPtr, cPiecesLen := cPublicPieceInfo(pieces)
 	defer C.free(unsafe.Pointer(cPiecesPtr))
 
-	resPtr := C.seal_pre_commit(
+	resPtr := C.seal_pre_commit_phase1(
 		cRegisteredSealProof(proofType),
 		cCacheDirPath,
 		cStagedSectorPath,
@@ -302,25 +302,63 @@ func SealPreCommit(
 		(*C.FFIPublicPieceInfo)(cPiecesPtr),
 		cPiecesLen,
 	)
-	defer C.destroy_seal_pre_commit_response(resPtr)
+	defer C.destroy_seal_pre_commit_phase1_response(resPtr)
 
 	if resPtr.status_code != 0 {
-		return RawSealPreCommitOutput{}, errors.New(C.GoString(resPtr.error_msg))
+		return nil, errors.New(C.GoString(resPtr.error_msg))
 	}
 
-	return goRawSealPreCommitOutput(resPtr.seal_pre_commit_output), nil
+	return goBytes(resPtr.seal_pre_commit_phase1_output_ptr, resPtr.seal_pre_commit_phase1_output_len), nil
 }
 
-// SealCommit
-func SealCommit(
+// SealPreCommitPhase2
+func SealPreCommitPhase2(
+	phase1Output []byte,
+	cacheDirPath string,
+	sealedSectorPath string,
+) (commR [CommitmentBytesLen]byte, commD [CommitmentBytesLen]byte, err error) {
+	cCacheDirPath := C.CString(cacheDirPath)
+	defer C.free(unsafe.Pointer(cCacheDirPath))
+
+	cSealedSectorPath := C.CString(sealedSectorPath)
+	defer C.free(unsafe.Pointer(cSealedSectorPath))
+
+	phase1OutputCBytes := C.CBytes(phase1Output[:])
+	defer C.free(phase1OutputCBytes)
+
+	resPtr := C.seal_pre_commit_phase2(
+		(*C.uint8_t)(phase1OutputCBytes),
+		C.size_t(len(phase1Output)),
+		cCacheDirPath,
+		cSealedSectorPath,
+	)
+	defer C.destroy_seal_pre_commit_phase2_response(resPtr)
+
+	if resPtr.status_code != 0 {
+		return [CommitmentBytesLen]byte{}, [CommitmentBytesLen]byte{}, errors.New(C.GoString(resPtr.error_msg))
+	}
+
+	return goCommitment(&resPtr.comm_r[0]), goCommitment(&resPtr.comm_d[0]), nil
+}
+
+// SealCommitPhase1
+func SealCommitPhase1(
+	proofType RegisteredSealProof,
+	commR [CommitmentBytesLen]byte,
+	commD [CommitmentBytesLen]byte,
 	cacheDirPath string,
 	sectorID uint64,
 	proverID [32]byte,
 	ticket [32]byte,
 	seed [32]byte,
 	pieces []PublicPieceInfo,
-	rspco RawSealPreCommitOutput,
-) ([]byte, error) {
+) (phase1Output []byte, err error) {
+	commRCBytes := C.CBytes(commR[:])
+	defer C.free(commRCBytes)
+
+	commDCBytes := C.CBytes(commD[:])
+	defer C.free(commDCBytes)
+
 	cCacheDirPath := C.CString(cacheDirPath)
 	defer C.free(unsafe.Pointer(cCacheDirPath))
 
@@ -336,7 +374,10 @@ func SealCommit(
 	cPiecesPtr, cPiecesLen := cPublicPieceInfo(pieces)
 	defer C.free(unsafe.Pointer(cPiecesPtr))
 
-	resPtr := C.seal_commit(
+	resPtr := C.seal_commit_phase1(
+		cRegisteredSealProof(proofType),
+		(*[CommitmentBytesLen]C.uint8_t)(commRCBytes),
+		(*[CommitmentBytesLen]C.uint8_t)(commDCBytes),
 		cCacheDirPath,
 		C.uint64_t(sectorID),
 		(*[32]C.uint8_t)(proverIDCBytes),
@@ -344,15 +385,41 @@ func SealCommit(
 		(*[32]C.uint8_t)(seedCBytes),
 		(*C.FFIPublicPieceInfo)(cPiecesPtr),
 		cPiecesLen,
-		cSealPreCommitOutput(rspco),
 	)
-	defer C.destroy_seal_commit_response(resPtr)
+	defer C.destroy_seal_commit_phase1_response(resPtr)
 
 	if resPtr.status_code != 0 {
 		return nil, errors.New(C.GoString(resPtr.error_msg))
 	}
 
-	return C.GoBytes(unsafe.Pointer(resPtr.proof_ptr), C.int(resPtr.proof_len)), nil
+	return goBytes(resPtr.seal_commit_phase1_output_ptr, resPtr.seal_commit_phase1_output_len), nil
+}
+
+// SealCommitPhase2
+func SealCommitPhase2(
+	phase1Output []byte,
+	sectorID uint64,
+	proverID [32]byte,
+) (proof []byte, err error) {
+	phase1OutputCBytes := C.CBytes(phase1Output)
+	defer C.free(phase1OutputCBytes)
+
+	proverIDCBytes := C.CBytes(proverID[:])
+	defer C.free(proverIDCBytes)
+
+	resPtr := C.seal_commit_phase2(
+		(*C.uint8_t)(phase1OutputCBytes),
+		C.size_t(len(phase1Output)),
+		C.uint64_t(sectorID),
+		(*[32]C.uint8_t)(proverIDCBytes),
+	)
+	defer C.destroy_seal_commit_phase2_response(resPtr)
+
+	if resPtr.status_code != 0 {
+		return nil, errors.New(C.GoString(resPtr.error_msg))
+	}
+
+	return goBytes(resPtr.proof_ptr, resPtr.proof_len), nil
 }
 
 // Unseal
@@ -573,7 +640,7 @@ func cPublicReplicaInfos(src []PublicSectorInfo) (*C.FFIPublicReplicaInfo, C.siz
 	xs := (*[1 << 30]C.FFIPublicReplicaInfo)(cPublicReplicas)
 	for i, v := range src {
 		xs[i] = C.FFIPublicReplicaInfo{
-			comm_r:           *(*[32]C.uint8_t)(unsafe.Pointer(&v.CommR)),
+			comm_r:           *(*[CommitmentBytesLen]C.uint8_t)(unsafe.Pointer(&v.CommR)),
 			registered_proof: cRegisteredPoStProof(v.PoStProofType),
 			sector_id:        C.uint64_t(v.SectorID),
 		}
@@ -593,7 +660,7 @@ func cPublicPieceInfo(src []PublicPieceInfo) (*C.FFIPublicPieceInfo, C.size_t) {
 	for i, v := range src {
 		xs[i] = C.FFIPublicPieceInfo{
 			num_bytes: C.uint64_t(v.Size),
-			comm_p:    *(*[32]C.uint8_t)(unsafe.Pointer(&v.CommP)),
+			comm_p:    *(*[CommitmentBytesLen]C.uint8_t)(unsafe.Pointer(&v.CommP)),
 		}
 	}
 
@@ -613,14 +680,6 @@ func cUint64s(src []uint64) (*C.uint64_t, C.size_t) {
 	}
 
 	return (*C.uint64_t)(cUint64s), srcCSizeT
-}
-
-func cSealPreCommitOutput(src RawSealPreCommitOutput) C.FFISealPreCommitOutput {
-	return C.FFISealPreCommitOutput{
-		comm_d:           *(*[32]C.uint8_t)(unsafe.Pointer(&src.CommD)),
-		comm_r:           *(*[32]C.uint8_t)(unsafe.Pointer(&src.CommR)),
-		registered_proof: cRegisteredSealProof(src.ProofType),
-	}
 }
 
 func cCandidates(src []Candidate) (*C.FFICandidate, C.size_t) {
@@ -652,7 +711,7 @@ func cPrivateReplicaInfos(src []PrivateSectorInfo) (*C.FFIPrivateReplicaInfo, C.
 	for i, v := range src {
 		pp[i] = C.FFIPrivateReplicaInfo{
 			cache_dir_path:   C.CString(v.CacheDirPath),
-			comm_r:           *(*[32]C.uint8_t)(unsafe.Pointer(&v.CommR)),
+			comm_r:           *(*[CommitmentBytesLen]C.uint8_t)(unsafe.Pointer(&v.CommR)),
 			replica_path:     C.CString(v.SealedSectorPath),
 			sector_id:        C.uint64_t(v.SectorID),
 			registered_proof: cRegisteredPoStProof(v.PoStProofType),
@@ -689,15 +748,7 @@ func goCandidate(src C.FFICandidate) Candidate {
 	}
 }
 
-func goRawSealPreCommitOutput(src C.FFISealPreCommitOutput) RawSealPreCommitOutput {
-	return RawSealPreCommitOutput{
-		CommD:     goCommitment(&src.comm_d[0]),
-		CommR:     goCommitment(&src.comm_r[0]),
-		ProofType: goRegisteredSealProof(src.registered_proof),
-	}
-}
-
-func goCommitment(src *C.uint8_t) [32]byte {
+func goCommitment(src *C.uint8_t) [CommitmentBytesLen]byte {
 	slice := C.GoBytes(unsafe.Pointer(src), 32)
 	var array [CommitmentBytesLen]byte
 	copy(array[:], slice)
