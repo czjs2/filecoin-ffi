@@ -33,6 +33,8 @@ pub unsafe fn to_public_replica_info_map(
     replicas_len: libc::size_t,
     flattened_proofs_ptr: *const u8,
     flattened_proofs_len: libc::size_t,
+    winners_ptr: *const FFICandidate,
+    winners_len: libc::size_t,
 ) -> Result<(BTreeMap<SectorId, PublicReplicaInfo>, Vec<Vec<u8>>)> {
     use rayon::prelude::*;
 
@@ -41,6 +43,22 @@ pub unsafe fn to_public_replica_info_map(
         !flattened_proofs_ptr.is_null(),
         "flattened_proof_ptr must not be null"
     );
+
+    let mut sector_id_to_num_times_won: BTreeMap<SectorId, usize> = Default::default();
+
+    let winners = from_raw_parts(winners_ptr, winners_len);
+
+    for winner in winners {
+        let k = SectorId::from(winner.sector_id);
+
+        let r = if let Some(v) = sector_id_to_num_times_won.get(&k) {
+            *v
+        } else {
+            0
+        };
+
+        sector_id_to_num_times_won.insert(k, r + 1);
+    }
 
     let proofs_slice = from_raw_parts(flattened_proofs_ptr, flattened_proofs_len);
     let mut proofs_index = 0;
@@ -57,8 +75,19 @@ pub unsafe fn to_public_replica_info_map(
 
         let proof_len =
             RegisteredPoStProof::from(ffi_info.registered_proof).single_partition_proof_len();
-        proofs.push(proofs_slice[proofs_index..proofs_index + proof_len].to_vec());
-        proofs_index += proof_len;
+
+        let num_times_won =
+            if let Some(n) = sector_id_to_num_times_won.get(&SectorId::from(ffi_info.sector_id)) {
+                *n
+            } else {
+                0
+            };
+
+        // handle the scenario in which a single replica won multiple times
+        for _ in 0..num_times_won {
+            proofs.push(proofs_slice[proofs_index..proofs_index + proof_len].to_vec());
+            proofs_index += proof_len;
+        }
     }
 
     let map = replicas

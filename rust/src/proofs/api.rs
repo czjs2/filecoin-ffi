@@ -535,6 +535,8 @@ pub unsafe extern "C" fn verify_post(
             replicas_len,
             flattened_proofs_ptr,
             flattened_proofs_len,
+            winners_ptr,
+            winners_len,
         );
 
         let result = convert.and_then(|(map, proofs)| {
