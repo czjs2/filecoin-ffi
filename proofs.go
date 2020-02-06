@@ -108,7 +108,7 @@ func VerifyPoSt(
 	sectorInfo SortedPublicSectorInfo,
 	randomness [32]byte,
 	challengeCount uint64,
-	proof []byte,
+	flattenedProofs []byte,
 	winners []Candidate,
 	proverID [32]byte,
 ) (bool, error) {
@@ -118,8 +118,8 @@ func VerifyPoSt(
 	randomnessCBytes := C.CBytes(randomness[:])
 	defer C.free(randomnessCBytes)
 
-	proofCBytes := C.CBytes(proof)
-	defer C.free(proofCBytes)
+	flattenedProofsCBytes := C.CBytes(flattenedProofs)
+	defer C.free(flattenedProofsCBytes)
 
 	winnersPtr, winnersSize := cCandidates(winners)
 	defer C.free(unsafe.Pointer(winnersPtr))
@@ -133,8 +133,8 @@ func VerifyPoSt(
 		C.uint64_t(challengeCount),
 		cInfoPtr,
 		cInfoSize,
-		(*C.uint8_t)(proofCBytes),
-		C.size_t(len(proof)),
+		(*C.uint8_t)(flattenedProofsCBytes),
+		C.size_t(len(flattenedProofs)),
 		winnersPtr,
 		winnersSize,
 		(*[32]C.uint8_t)(proverIDCBytes),
@@ -575,7 +575,7 @@ func GeneratePoSt(
 	privateSectorInfo SortedPrivateSectorInfo,
 	randomness [32]byte,
 	winners []Candidate,
-) ([]byte, error) {
+) (flattenedProofs []byte, err error) {
 	replicasPtr, replicasSize := cPrivateReplicaInfos(privateSectorInfo.Values())
 	defer C.free(unsafe.Pointer(replicasPtr))
 
