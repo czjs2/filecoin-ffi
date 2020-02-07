@@ -495,3 +495,25 @@ impl Default for GenerateDataCommitmentResponse {
 }
 
 code_and_message_impl!(GenerateDataCommitmentResponse);
+
+///
+
+#[repr(C)]
+#[derive(DropStructMacro)]
+pub struct StringResponse {
+    pub status_code: FCPResponseStatus,
+    pub error_msg: *const libc::c_char,
+    pub string_val: *const libc::c_char,
+}
+
+impl Default for StringResponse {
+    fn default() -> StringResponse {
+        StringResponse {
+            status_code: FCPResponseStatus::FCPNoError,
+            error_msg: ptr::null(),
+            string_val: ptr::null(),
+        }
+    }
+}
+
+code_and_message_impl!(StringResponse);

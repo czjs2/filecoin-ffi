@@ -625,6 +625,174 @@ func GetGPUDevices() ([]string, error) {
 	return devices, nil
 }
 
+// GetSealParamsCid
+func GetSealParamsCid(
+	proofType RegisteredSealProof,
+) (string, error) {
+	resPtr := C.get_seal_params_cid(cRegisteredSealProof(proofType))
+	defer C.destroy_string_response(resPtr)
+
+	if resPtr.status_code != 0 {
+		return "", errors.New(C.GoString(resPtr.error_msg))
+	}
+
+	return C.GoString(resPtr.string_val), nil
+}
+
+// GetSealVerifyingKeyCid
+func GetSealVerifyingKeyCid(
+	proofType RegisteredSealProof,
+) (string, error) {
+	resPtr := C.get_seal_verifying_key_cid(cRegisteredSealProof(proofType))
+	defer C.destroy_string_response(resPtr)
+
+	if resPtr.status_code != 0 {
+		return "", errors.New(C.GoString(resPtr.error_msg))
+	}
+
+	return C.GoString(resPtr.string_val), nil
+}
+
+// GetSealParamsPath
+func GetSealParamsPath(
+	proofType RegisteredSealProof,
+) (string, error) {
+	resPtr := C.get_seal_params_path(cRegisteredSealProof(proofType))
+	defer C.destroy_string_response(resPtr)
+
+	if resPtr.status_code != 0 {
+		return "", errors.New(C.GoString(resPtr.error_msg))
+	}
+
+	return C.GoString(resPtr.string_val), nil
+}
+
+// GetSealVerifyingKeyPath
+func GetSealVerifyingKeyPath(
+	proofType RegisteredSealProof,
+) (string, error) {
+	resPtr := C.get_seal_verifying_key_path(cRegisteredSealProof(proofType))
+	defer C.destroy_string_response(resPtr)
+
+	if resPtr.status_code != 0 {
+		return "", errors.New(C.GoString(resPtr.error_msg))
+	}
+
+	return C.GoString(resPtr.string_val), nil
+}
+
+// GetSealCircuitIdentifier
+func GetSealCircuitIdentifier(
+	proofType RegisteredSealProof,
+) (string, error) {
+	resPtr := C.get_seal_circuit_identifier(cRegisteredSealProof(proofType))
+	defer C.destroy_string_response(resPtr)
+
+	if resPtr.status_code != 0 {
+		return "", errors.New(C.GoString(resPtr.error_msg))
+	}
+
+	return C.GoString(resPtr.string_val), nil
+}
+
+// GetSealVersion
+func GetSealVersion(
+	proofType RegisteredSealProof,
+) (string, error) {
+	resPtr := C.get_seal_version(cRegisteredSealProof(proofType))
+	defer C.destroy_string_response(resPtr)
+
+	if resPtr.status_code != 0 {
+		return "", errors.New(C.GoString(resPtr.error_msg))
+	}
+
+	return C.GoString(resPtr.string_val), nil
+}
+
+// GetPoStParamsCid
+func GetPoStParamsCid(
+	proofType RegisteredPoStProof,
+) (string, error) {
+	resPtr := C.get_post_params_cid(cRegisteredPoStProof(proofType))
+	defer C.destroy_string_response(resPtr)
+
+	if resPtr.status_code != 0 {
+		return "", errors.New(C.GoString(resPtr.error_msg))
+	}
+
+	return C.GoString(resPtr.string_val), nil
+}
+
+// GetPoStVerifyingKeyCid
+func GetPoStVerifyingKeyCid(
+	proofType RegisteredPoStProof,
+) (string, error) {
+	resPtr := C.get_post_verifying_key_cid(cRegisteredPoStProof(proofType))
+	defer C.destroy_string_response(resPtr)
+
+	if resPtr.status_code != 0 {
+		return "", errors.New(C.GoString(resPtr.error_msg))
+	}
+
+	return C.GoString(resPtr.string_val), nil
+}
+
+// GetPoStParamsPath
+func GetPoStParamsPath(
+	proofType RegisteredPoStProof,
+) (string, error) {
+	resPtr := C.get_post_params_path(cRegisteredPoStProof(proofType))
+	defer C.destroy_string_response(resPtr)
+
+	if resPtr.status_code != 0 {
+		return "", errors.New(C.GoString(resPtr.error_msg))
+	}
+
+	return C.GoString(resPtr.string_val), nil
+}
+
+// GetPoStVerifyingKeyPath
+func GetPoStVerifyingKeyPath(
+	proofType RegisteredPoStProof,
+) (string, error) {
+	resPtr := C.get_post_verifying_key_path(cRegisteredPoStProof(proofType))
+	defer C.destroy_string_response(resPtr)
+
+	if resPtr.status_code != 0 {
+		return "", errors.New(C.GoString(resPtr.error_msg))
+	}
+
+	return C.GoString(resPtr.string_val), nil
+}
+
+// GetPoStCircuitIdentifier
+func GetPoStCircuitIdentifier(
+	proofType RegisteredPoStProof,
+) (string, error) {
+	resPtr := C.get_post_circuit_identifier(cRegisteredPoStProof(proofType))
+	defer C.destroy_string_response(resPtr)
+
+	if resPtr.status_code != 0 {
+		return "", errors.New(C.GoString(resPtr.error_msg))
+	}
+
+	return C.GoString(resPtr.string_val), nil
+}
+
+// GetPoStVersion
+func GetPoStVersion(
+	proofType RegisteredPoStProof,
+) (string, error) {
+	resPtr := C.get_post_version(cRegisteredPoStProof(proofType))
+	defer C.destroy_string_response(resPtr)
+
+	if resPtr.status_code != 0 {
+		return "", errors.New(C.GoString(resPtr.error_msg))
+	}
+
+	return C.GoString(resPtr.string_val), nil
+}
+
 // SingleProofPartitionProofLen denotes the number of bytes in a proof generated
 // with a single partition. The number of bytes in a proof increases linearly
 // with the number of partitions used when creating that proof.

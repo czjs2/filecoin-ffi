@@ -6,8 +6,8 @@ use ffi_toolkit::{
     c_str_to_pbuf, catch_panic_response, raw_ptr, rust_str_to_c_str, FCPResponseStatus,
 };
 use filecoin_proofs_api::{
-    PaddedBytesAmount, PieceInfo, RegisteredSealProof, SectorId, UnpaddedByteIndex,
-    UnpaddedBytesAmount,
+    PaddedBytesAmount, PieceInfo, RegisteredPoStProof, RegisteredSealProof, SectorId,
+    UnpaddedByteIndex, UnpaddedBytesAmount,
 };
 use libc;
 
@@ -352,9 +352,7 @@ pub unsafe extern "C" fn unseal(
             *comm_d,
             *ticket,
             UnpaddedByteIndex(0u64),
-            UnpaddedBytesAmount::from(PaddedBytesAmount(u64::from(
-                RegisteredSealProof::from(registered_proof).sector_size(),
-            ))),
+            UnpaddedBytesAmount::from(PaddedBytesAmount(u64::from(registered_proof.sector_size()))),
         );
 
         let mut response = UnsealResponse::default();
@@ -815,6 +813,11 @@ pub unsafe extern "C" fn destroy_generate_data_commitment_response(
     let _ = Box::from_raw(ptr);
 }
 
+#[no_mangle]
+pub unsafe extern "C" fn destroy_string_response(ptr: *mut StringResponse) {
+    let _ = Box::from_raw(ptr);
+}
+
 /// Returns the number of user bytes that will fit into a staged sector.
 ///
 #[no_mangle]
@@ -824,6 +827,174 @@ pub unsafe extern "C" fn get_max_user_bytes_per_staged_sector(
     u64::from(UnpaddedBytesAmount::from(
         RegisteredSealProof::from(registered_proof).sector_size(),
     ))
+}
+
+/// Returns the CID of the Groth parameter file for sealing.
+///
+#[no_mangle]
+pub unsafe extern "C" fn get_seal_params_cid(
+    registered_proof: FFIRegisteredSealProof,
+) -> *mut StringResponse {
+    registered_seal_proof_accessor(registered_proof, RegisteredSealProof::params_cid)
+}
+
+/// Returns the CID of the verifying key-file for verifying a seal proof.
+///
+#[no_mangle]
+pub unsafe extern "C" fn get_seal_verifying_key_cid(
+    registered_proof: FFIRegisteredSealProof,
+) -> *mut StringResponse {
+    registered_seal_proof_accessor(registered_proof, RegisteredSealProof::verifying_key_cid)
+}
+
+/// Returns the path from which the proofs library expects to find the Groth
+/// parameter file used when sealing.
+///
+#[no_mangle]
+pub unsafe extern "C" fn get_seal_params_path(
+    registered_proof: FFIRegisteredSealProof,
+) -> *mut StringResponse {
+    registered_seal_proof_accessor(registered_proof, |p| {
+        p.cache_params_path()
+            .map(|pb| String::from(pb.to_string_lossy()))
+    })
+}
+
+/// Returns the path from which the proofs library expects to find the verifying
+/// key-file used when verifying a seal proof.
+///
+#[no_mangle]
+pub unsafe extern "C" fn get_seal_verifying_key_path(
+    registered_proof: FFIRegisteredSealProof,
+) -> *mut StringResponse {
+    registered_seal_proof_accessor(registered_proof, |p| {
+        p.cache_verifying_key_path()
+            .map(|pb| String::from(pb.to_string_lossy()))
+    })
+}
+
+/// Returns the identity of the circuit for the provided seal proof.
+///
+#[no_mangle]
+pub unsafe extern "C" fn get_seal_circuit_identifier(
+    registered_proof: FFIRegisteredSealProof,
+) -> *mut StringResponse {
+    registered_seal_proof_accessor(registered_proof, RegisteredSealProof::circuit_identifier)
+}
+
+/// Returns the version of the provided seal proof type.
+///
+#[no_mangle]
+pub unsafe extern "C" fn get_seal_version(
+    registered_proof: FFIRegisteredSealProof,
+) -> *mut StringResponse {
+    registered_seal_proof_accessor(registered_proof, |p| Ok(format!("{:?}", p)))
+}
+
+/// Returns the CID of the Groth parameter file for generating a PoSt.
+///
+#[no_mangle]
+pub unsafe extern "C" fn get_post_params_cid(
+    registered_proof: FFIRegisteredPoStProof,
+) -> *mut StringResponse {
+    registered_post_proof_accessor(registered_proof, RegisteredPoStProof::params_cid)
+}
+
+/// Returns the CID of the verifying key-file for verifying a PoSt proof.
+///
+#[no_mangle]
+pub unsafe extern "C" fn get_post_verifying_key_cid(
+    registered_proof: FFIRegisteredPoStProof,
+) -> *mut StringResponse {
+    registered_post_proof_accessor(registered_proof, RegisteredPoStProof::verifying_key_cid)
+}
+
+/// Returns the path from which the proofs library expects to find the Groth
+/// parameter file used when generating a PoSt.
+///
+#[no_mangle]
+pub unsafe extern "C" fn get_post_params_path(
+    registered_proof: FFIRegisteredPoStProof,
+) -> *mut StringResponse {
+    registered_post_proof_accessor(registered_proof, |p| {
+        p.cache_params_path()
+            .map(|pb| String::from(pb.to_string_lossy()))
+    })
+}
+
+/// Returns the path from which the proofs library expects to find the verifying
+/// key-file used when verifying a PoSt proof.
+///
+#[no_mangle]
+pub unsafe extern "C" fn get_post_verifying_key_path(
+    registered_proof: FFIRegisteredPoStProof,
+) -> *mut StringResponse {
+    registered_post_proof_accessor(registered_proof, |p| {
+        p.cache_verifying_key_path()
+            .map(|pb| String::from(pb.to_string_lossy()))
+    })
+}
+
+/// Returns the identity of the circuit for the provided PoSt proof type.
+///
+#[no_mangle]
+pub unsafe extern "C" fn get_post_circuit_identifier(
+    registered_proof: FFIRegisteredPoStProof,
+) -> *mut StringResponse {
+    registered_post_proof_accessor(registered_proof, RegisteredPoStProof::circuit_identifier)
+}
+
+/// Returns the version of the provided seal proof.
+///
+#[no_mangle]
+pub unsafe extern "C" fn get_post_version(
+    registered_proof: FFIRegisteredPoStProof,
+) -> *mut StringResponse {
+    registered_post_proof_accessor(registered_proof, |p| Ok(format!("{:?}", p)))
+}
+
+unsafe fn registered_seal_proof_accessor(
+    registered_proof: FFIRegisteredSealProof,
+    op: fn(RegisteredSealProof) -> anyhow::Result<String>,
+) -> *mut StringResponse {
+    let mut response = StringResponse::default();
+
+    let rsp: RegisteredSealProof = registered_proof.into();
+
+    match op(rsp) {
+        Ok(s) => {
+            response.status_code = FCPResponseStatus::FCPNoError;
+            response.string_val = rust_str_to_c_str(s);
+        }
+        Err(err) => {
+            response.status_code = FCPResponseStatus::FCPUnclassifiedError;
+            response.error_msg = rust_str_to_c_str(format!("{:?}", err));
+        }
+    }
+
+    raw_ptr(response)
+}
+
+unsafe fn registered_post_proof_accessor(
+    registered_proof: FFIRegisteredPoStProof,
+    op: fn(RegisteredPoStProof) -> anyhow::Result<String>,
+) -> *mut StringResponse {
+    let mut response = StringResponse::default();
+
+    let rsp: RegisteredPoStProof = registered_proof.into();
+
+    match op(rsp) {
+        Ok(s) => {
+            response.status_code = FCPResponseStatus::FCPNoError;
+            response.string_val = rust_str_to_c_str(s);
+        }
+        Err(err) => {
+            response.status_code = FCPResponseStatus::FCPUnclassifiedError;
+            response.error_msg = rust_str_to_c_str(format!("{:?}", err));
+        }
+    }
+
+    raw_ptr(response)
 }
 
 /// Deallocates a VerifySealResponse.
@@ -877,6 +1048,7 @@ pub mod tests {
     use rand::{thread_rng, Rng};
 
     use super::*;
+    use std::ffi::CString;
 
     #[test]
     fn test_write_with_and_without_alignment() -> Result<()> {
@@ -944,6 +1116,79 @@ pub mod tests {
                 381,
                 "should have added 381 bytes of (unpadded) left alignment"
             );
+        }
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_proof_types() -> Result<()> {
+        let seal_types = vec![
+            FFIRegisteredSealProof::StackedDrg1KiBV1,
+            FFIRegisteredSealProof::StackedDrg16MiBV1,
+            FFIRegisteredSealProof::StackedDrg256MiBV1,
+            FFIRegisteredSealProof::StackedDrg1GiBV1,
+            FFIRegisteredSealProof::StackedDrg32GiBV1,
+        ];
+
+        let post_types = vec![
+            FFIRegisteredPoStProof::StackedDrg1KiBV1,
+            FFIRegisteredPoStProof::StackedDrg16MiBV1,
+            FFIRegisteredPoStProof::StackedDrg256MiBV1,
+            FFIRegisteredPoStProof::StackedDrg1GiBV1,
+            FFIRegisteredPoStProof::StackedDrg32GiBV1,
+        ];
+
+        let num_ops = (seal_types.len() + post_types.len()) * 6;
+
+        let mut pairs: Vec<(&str, *mut StringResponse)> = Vec::with_capacity(num_ops);
+
+        unsafe {
+            for st in seal_types {
+                pairs.push(("get_seal_params_cid", get_seal_params_cid(st)));
+                pairs.push(("get_seal_verify_key_cid", get_seal_verifying_key_cid(st)));
+                pairs.push(("get_seal_verify_key_cid", get_seal_params_path(st)));
+                pairs.push(("get_seal_verify_key_cid", get_seal_verifying_key_path(st)));
+                pairs.push((
+                    "get_seal_circuit_identifier",
+                    get_seal_circuit_identifier(st),
+                ));
+                pairs.push(("get_seal_version", get_seal_version(st)));
+            }
+
+            for pt in post_types {
+                pairs.push(("get_post_params_cid", get_post_params_cid(pt)));
+                pairs.push(("get_post_verify_key_cid", get_post_verifying_key_cid(pt)));
+                pairs.push(("get_post_params_path", get_post_params_path(pt)));
+                pairs.push((
+                    "get_post_verifying_key_path",
+                    get_post_verifying_key_path(pt),
+                ));
+                pairs.push((
+                    "get_post_circuit_identifier",
+                    get_post_circuit_identifier(pt),
+                ));
+                pairs.push(("get_post_version", get_post_version(pt)));
+            }
+        }
+
+        for (label, r) in pairs {
+            unsafe {
+                assert_eq!(
+                    (*r).status_code,
+                    FCPResponseStatus::FCPNoError,
+                    "non-success exit code from {:?}: {:?}",
+                    label,
+                    c_str_to_rust_str((*r).error_msg)
+                );
+
+                let x = CString::from_raw((*r).string_val as *mut libc::c_char);
+                let y = x.into_string().unwrap_or(String::from(""));
+
+                assert!(y.len() > 0);
+
+                destroy_string_response(r);
+            }
         }
 
         Ok(())

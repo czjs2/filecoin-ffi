@@ -252,6 +252,78 @@ func TestGetGPUDevicesDoesNotProduceAnError(t *testing.T) {
 	fmt.Printf("devices: %+v\n", devices) // clutters up test output, but useful
 }
 
+func TestRegisteredSealProofFunctions(t *testing.T) {
+	sealTypes := []RegisteredSealProof{
+		SealProofStackedDrg1KiBV1,
+		SealProofStackedDrg16MiBV1,
+		SealProofStackedDrg256MiBV1,
+		SealProofStackedDrg1GiBV1,
+		SealProofStackedDrg32GiBV1,
+	}
+
+	for _, st := range sealTypes {
+		v, err := GetSealParamsCid(st)
+		assert.NoError(t, err)
+		assert.True(t, len(v) > 0)
+
+		v, err = GetSealVerifyingKeyCid(st)
+		assert.NoError(t, err)
+		assert.True(t, len(v) > 0)
+
+		v, err = GetSealParamsPath(st)
+		assert.NoError(t, err)
+		assert.True(t, len(v) > 0)
+
+		v, err = GetSealVerifyingKeyPath(st)
+		assert.NoError(t, err)
+		assert.True(t, len(v) > 0)
+
+		v, err = GetSealCircuitIdentifier(st)
+		assert.NoError(t, err)
+		assert.True(t, len(v) > 0)
+
+		v, err = GetSealVersion(st)
+		assert.NoError(t, err)
+		assert.True(t, len(v) > 0)
+	}
+}
+
+func TestRegisteredPoStProofFunctions(t *testing.T) {
+	postTypes := []RegisteredPoStProof{
+		PoStProofStackedDrg1KiBV1,
+		PoStProofStackedDrg16MiBV1,
+		PoStProofStackedDrg256MiBV1,
+		PoStProofStackedDrg1GiBV1,
+		PoStProofStackedDrg32GiBV1,
+	}
+
+	for _, pt := range postTypes {
+		v, err := GetPoStParamsCid(pt)
+		assert.NoError(t, err)
+		assert.True(t, len(v) > 0)
+
+		v, err = GetPoStVerifyingKeyCid(pt)
+		assert.NoError(t, err)
+		assert.True(t, len(v) > 0)
+
+		v, err = GetPoStParamsPath(pt)
+		assert.NoError(t, err)
+		assert.True(t, len(v) > 0)
+
+		v, err = GetPoStVerifyingKeyPath(pt)
+		assert.NoError(t, err)
+		assert.True(t, len(v) > 0)
+
+		v, err = GetPoStCircuitIdentifier(pt)
+		assert.NoError(t, err)
+		assert.True(t, len(v) > 0)
+
+		v, err = GetPoStVersion(pt)
+		assert.NoError(t, err)
+		assert.True(t, len(v) > 0)
+	}
+}
+
 func requireTempFile(t *testing.T, fileContentsReader io.Reader, size uint64) *os.File {
 	file, err := ioutil.TempFile("", "")
 	require.NoError(t, err)

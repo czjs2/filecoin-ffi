@@ -28,6 +28,7 @@ struct PublicReplicaInfoTmp {
 /// storage fault-boolean if the sector id is present in the provided dynamic
 /// array. This function's return value should be provided to the verify_post
 /// call.
+#[allow(clippy::type_complexity)]
 pub unsafe fn to_public_replica_info_map(
     replicas_ptr: *const FFIPublicReplicaInfo,
     replicas_len: libc::size_t,
