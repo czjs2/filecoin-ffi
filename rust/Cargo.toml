@@ -13,8 +13,8 @@ publish = false
 crate-type = ["rlib", "staticlib"]
 
 [dependencies]
-filecoin-proofs = { git = "https://github.com/filecoin-project/rust-fil-proofs.git", branch = "master" }
-storage-proofs = { git = "https://github.com/filecoin-project/rust-fil-proofs.git", branch = "master" }
+filecoin-proofs = { git = "https://github.com/xjrwfilecoin/rust-fil-proofs.git", branch = "master" }
+storage-proofs = { git = "https://github.com/xjrwfilecoin/rust-fil-proofs.git", branch = "master" }
 bls-signatures = { git = "https://github.com/filecoin-project/bls-signatures.git", branch = "master" }
 byteorder = "1.2"
 drop_struct_macro_derive = "0.4.0"
@@ -27,6 +27,7 @@ fil_logger = "0.1.0"
 rand = "0.7"
 rayon = "1.2.1"
 anyhow = "1.0.23"
+bellperson = { version = "0.5", features = ["gpu"] }
 
 [build-dependencies]
 cbindgen = "= 0.10.0"
