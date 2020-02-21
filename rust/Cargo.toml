@@ -30,7 +30,7 @@ bellperson = { version = "0.6.0", features = ["gpu"] }
 serde_json = "1.0.46"
 
 [dependencies.filecoin-proofs-api]
-git = "https://github.com/filecoin-project/rust-filecoin-proofs-api.git"
+git = "https://github.com/xjrwfilecoin/rust-filecoin-proofs-api.git"
 branch = "master"
 
 [build-dependencies]
