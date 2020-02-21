@@ -13,8 +13,8 @@ publish = false
 crate-type = ["rlib", "staticlib"]
 
 [dependencies]
-filecoin-proofs = { git = "https://github.com/xjrwfilecoin/rust-fil-proofs.git", branch = "qzopt-fil" }
-storage-proofs = { git = "https://github.com/xjrwfilecoin/rust-fil-proofs.git", branch = "qzopt-fil" }
+filecoin-proofs = { git = "https://github.com/xjrwfilecoin/rust-fil-proofs.git", branch = "qzopt" }
+storage-proofs = { git = "https://github.com/xjrwfilecoin/rust-fil-proofs.git", branch = "qzopt" }
 
 bls-signatures = { git = "https://github.com/filecoin-project/bls-signatures.git", branch = "master" }
 byteorder = "1.2"
