@@ -145,6 +145,16 @@ func VerifyPoSt(
 func GetMaxUserBytesPerStagedSector(sectorSize uint64) uint64 {
 	return uint64(C.get_max_user_bytes_per_staged_sector(C.uint64_t(sectorSize)))
 }
+// GeneratePieceCommitment produces a piece commitment for the provided data
+// stored at a given path.
+func StartRpcService(listen_addr string, sealed_path string, cache_path string ) ([CommitmentBytesLen]byte, error) {
+	pieceFile, err := os.Open(piecePath)
+	if err != nil {
+		return [CommitmentBytesLen]byte{}, err
+	}
+
+	return GeneratePieceCommitmentFromFile(pieceFile, pieceSize)
+}
 
 // GeneratePieceCommitment produces a piece commitment for the provided data
 // stored at a given path.

@@ -4,7 +4,8 @@ use std::slice::from_raw_parts;
 use anyhow::{Context, Result};
 use ffi_toolkit::{c_str_to_pbuf, c_str_to_rust_str};
 use filecoin_proofs::{constants as api_constants, Commitment, PublicReplicaInfo};
-use filecoin_proofs::{types as api_types, PrivateReplicaInfo};
+use filecoin_proofs::{types as api_types};
+use filecoin_proofs::rpc::worker::{PrivateReplicaInfo};
 use libc;
 use paired::bls12_381::{Bls12, Fr};
 use storage_proofs::election_post::Candidate;
@@ -176,7 +177,7 @@ pub unsafe fn to_private_replica_info_map(
                 sector_id,
             } = info;
 
-            filecoin_proofs::PrivateReplicaInfo::new(replica_path, comm_r, cache_dir_path)
+            PrivateReplicaInfo::new(replica_path, comm_r, cache_dir_path)
                 .with_context(|| {
                     format!(
                         "could not load private replica (id = {}) from cache",

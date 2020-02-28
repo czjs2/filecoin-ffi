@@ -84,7 +84,7 @@ pub unsafe extern "C" fn aggregate(
 
     let mut raw_signature: [u8; SIGNATURE_BYTES] = [0; SIGNATURE_BYTES];
     aggregate_sig(&signatures)
-        .write_bytes(&mut raw_signature.as_mut())
+        .write_bytes(&mut &mut raw_signature[..])
         .expect("preallocated");
 
     let response = types::AggregateResponse {
@@ -198,7 +198,7 @@ pub unsafe extern "C" fn private_key_sign(
 
     let mut raw_signature: [u8; SIGNATURE_BYTES] = [0; SIGNATURE_BYTES];
     PrivateKey::sign(&private_key, message)
-        .write_bytes(&mut raw_signature.as_mut())
+        .write_bytes(&mut &mut raw_signature[..])
         .expect("preallocated");
 
     let response = types::PrivateKeySignResponse {
@@ -228,7 +228,7 @@ pub unsafe extern "C" fn private_key_public_key(
     let mut raw_public_key: [u8; PUBLIC_KEY_BYTES] = [0; PUBLIC_KEY_BYTES];
     private_key
         .public_key()
-        .write_bytes(&mut raw_public_key.as_mut())
+        .write_bytes(&mut &mut raw_public_key[..])
         .expect("preallocated");
 
     let response = types::PrivateKeyPublicKeyResponse {

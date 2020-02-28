@@ -3,13 +3,15 @@ use std::slice::from_raw_parts;
 use std::sync::Once;
 
 use ffi_toolkit::{
-    c_str_to_pbuf, catch_panic_response, raw_ptr, rust_str_to_c_str, FCPResponseStatus,
+    c_str_to_pbuf, catch_panic_response, raw_ptr, rust_str_to_c_str, FCPResponseStatus,c_str_to_rust_str
 };
 use filecoin_proofs as api_fns;
 use filecoin_proofs::{
     types as api_types, PaddedBytesAmount, PieceInfo, PoRepConfig, PoRepProofPartitions,
     PoStConfig, SectorClass, SectorSize, UnpaddedByteIndex, UnpaddedBytesAmount,
 };
+
+use filecoin_proofs::rpc::server::{RpcServer};
 use libc;
 use storage_proofs::sector::SectorId;
 
@@ -767,6 +769,16 @@ pub unsafe extern "C" fn destroy_generate_candidates_response(
 ) {
     let _ = Box::from_raw(ptr);
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn start_service(listen_addr :*const libc::c_char,sealed_path :*const libc::c_char,cache_path:*const libc::c_char) -> RpcServer {
+    api_fns::start_rpc_service(
+        &c_str_to_rust_str(listen_addr),
+        &c_str_to_rust_str(sealed_path),
+        &c_str_to_rust_str(cache_path)
+    )
+}
+
 
 /// Protects the init off the logger.
 static LOG_INIT: Once = Once::new();
