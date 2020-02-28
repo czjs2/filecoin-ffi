@@ -169,6 +169,25 @@ impl Default for GeneratePoStResponse {
 
 code_and_message_impl!(GeneratePoStResponse);
 
+
+#[repr(C)]
+#[derive(DropStructMacro)]
+pub struct StartServiceResponse {
+    pub error_msg: *const libc::c_char,
+    pub status_code: FCPResponseStatus,
+}
+
+impl Default for StartServiceResponse {
+    fn default() -> StartServiceResponse {
+        StartServiceResponse {
+            error_msg: ptr::null(),
+            status_code: FCPResponseStatus::FCPUnclassifiedError,
+        }
+    }
+}
+
+code_and_message_impl!(StartServiceResponse);
+
 #[repr(C)]
 #[derive(DropStructMacro)]
 pub struct WriteWithAlignmentResponse {

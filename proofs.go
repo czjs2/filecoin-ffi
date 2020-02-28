@@ -3,6 +3,7 @@
 package ffi
 
 import (
+	"fmt"
 	"os"
 	"runtime"
 	"unsafe"
@@ -145,16 +146,6 @@ func VerifyPoSt(
 func GetMaxUserBytesPerStagedSector(sectorSize uint64) uint64 {
 	return uint64(C.get_max_user_bytes_per_staged_sector(C.uint64_t(sectorSize)))
 }
-// GeneratePieceCommitment produces a piece commitment for the provided data
-// stored at a given path.
-func StartRpcService(listen_addr string, sealed_path string, cache_path string ) ([CommitmentBytesLen]byte, error) {
-	pieceFile, err := os.Open(piecePath)
-	if err != nil {
-		return [CommitmentBytesLen]byte{}, err
-	}
-
-	return GeneratePieceCommitmentFromFile(pieceFile, pieceSize)
-}
 
 // GeneratePieceCommitment produces a piece commitment for the provided data
 // stored at a given path.
@@ -183,9 +174,37 @@ func GenerateDataCommitment(sectorSize uint64, pieces []PublicPieceInfo) ([Commi
 	return goCommitment(&resPtr.comm_d[0]), nil
 }
 
+// StartRPCServer start rpc service
+// provided pieces.
+func StartRPCServer(listenAddr string, sealedpath string, cachepath string, miner string) (bool, error) {
+
+	listenAddrC := C.CString(listenAddr)
+	defer C.free(unsafe.Pointer(listenAddrC))
+	sealedpathC := C.CString(sealedpath)
+	defer C.free(unsafe.Pointer(sealedpathC))
+	cachepathC := C.CString(cachepath)
+	defer C.free(unsafe.Pointer(cachepathC))
+	minerC := C.CString(miner)
+	defer C.free(unsafe.Pointer(minerC))
+
+	resPtr := C.start_rpc_service(listenAddrC, sealedpathC, cachepathC, minerC)
+	defer C.destroy_start_service_response(resPtr)
+
+	if resPtr.status_code == 0 {
+		return true, nil
+	}
+
+	return false, fmt.Errorf("Start Service error:%v", resPtr.error_msg)
+}
+
+// provided pieces.
+func SetupRPCResolvePort(port int32) {
+	C.set_resolve_port(C.int(port))
+}
+
 // GeneratePieceCommitmentFromFile produces a piece commitment for the provided data
 // stored in a given file.
-func GeneratePieceCommitmentFromFile(pieceFile *os.File, pieceSize uint64) (commP [CommitmentBytesLen]byte, err error) {
+func GeneratePieceCommitmentFromFile(pieceFile *os.File, pieceSize uint64) (coFmmP [CommitmentBytesLen]byte, err error) {
 	pieceFd := pieceFile.Fd()
 
 	resPtr := C.generate_piece_commitment(C.int(pieceFd), C.uint64_t(pieceSize))

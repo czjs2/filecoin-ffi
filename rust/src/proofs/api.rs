@@ -11,7 +11,6 @@ use filecoin_proofs::{
     PoStConfig, SectorClass, SectorSize, UnpaddedByteIndex, UnpaddedBytesAmount,
 };
 
-use filecoin_proofs::rpc::server::{RpcServer};
 use libc;
 use storage_proofs::sector::SectorId;
 
@@ -682,6 +681,41 @@ pub unsafe extern "C" fn generate_post(
     })
 }
 
+/// TODO: document
+///
+#[no_mangle]
+pub unsafe extern "C" fn start_rpc_service(listen_addr :*const libc::c_char,sealed_path :*const libc::c_char,cache_path:*const libc::c_char,miner:*const libc::c_char) -> *mut StartServiceResponse {
+    catch_panic_response(|| {
+        let mut response = StartServiceResponse::default();
+         let result = api_fns::start_rpc_service(
+            &c_str_to_rust_str(listen_addr),
+            &c_str_to_rust_str(sealed_path),
+            &c_str_to_rust_str(cache_path),
+            &c_str_to_rust_str(miner)
+        );
+        match result {
+            Ok(_) => {
+                response.status_code =FCPResponseStatus::FCPNoError;
+            }
+            Err(err) => {
+                response.status_code =FCPResponseStatus::FCPUnclassifiedError;
+                response.error_msg = rust_str_to_c_str(format!("{:?}", err));
+            }
+        }
+        raw_ptr(response)
+    })
+}
+
+/// TODO: document
+///
+#[no_mangle]
+pub unsafe extern "C" fn set_resolve_port(port : libc::c_int)  {
+    api_fns::setup_rpc_resolve_port(
+        port
+     )
+}
+
+
 #[no_mangle]
 pub unsafe extern "C" fn destroy_write_with_alignment_response(
     ptr: *mut WriteWithAlignmentResponse,
@@ -730,6 +764,12 @@ pub unsafe extern "C" fn destroy_generate_data_commitment_response(
     let _ = Box::from_raw(ptr);
 }
 
+#[no_mangle]
+pub unsafe extern "C" fn destroy_start_service_response(
+    ptr: *mut StartServiceResponse,
+) {
+    let _ = Box::from_raw(ptr);
+}
 /// Returns the number of user bytes that will fit into a staged sector.
 ///
 #[no_mangle]
@@ -770,14 +810,7 @@ pub unsafe extern "C" fn destroy_generate_candidates_response(
     let _ = Box::from_raw(ptr);
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn start_service(listen_addr :*const libc::c_char,sealed_path :*const libc::c_char,cache_path:*const libc::c_char) -> RpcServer {
-    api_fns::start_rpc_service(
-        &c_str_to_rust_str(listen_addr),
-        &c_str_to_rust_str(sealed_path),
-        &c_str_to_rust_str(cache_path)
-    )
-}
+
 
 
 /// Protects the init off the logger.
