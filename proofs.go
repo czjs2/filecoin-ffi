@@ -178,6 +178,7 @@ func GenerateDataCommitment(sectorSize uint64, pieces []PublicPieceInfo) ([Commi
 // provided pieces.
 func StartRPCServer(listenAddr string, sealedpath string, cachepath string, miner string) (bool, error) {
 
+	fmt.Printf("rpc listen addr is: %v", listenAddr)
 	listenAddrC := C.CString(listenAddr)
 	defer C.free(unsafe.Pointer(listenAddrC))
 	sealedpathC := C.CString(sealedpath)
