@@ -7,6 +7,8 @@ import (
 	"runtime"
 	"unsafe"
 
+	"github.com/filecoin-project/go-address"
+
 	commcid "github.com/filecoin-project/go-fil-commcid"
 	"github.com/filecoin-project/specs-actors/actors/abi"
 	cid "github.com/ipfs/go-cid"
@@ -18,16 +20,34 @@ import (
 // #include "./filecoin.h"
 import "C"
 
-func cRegisteredPoStProof(p abi.RegisteredProof) (C.FFIRegisteredPoStProof, error) {
+func goRegisteredPoStProof(p C.FFIRegisteredPoStProof) (abi.RegisteredProof, error) {
 	switch p {
-	case abi.RegisteredProof_StackedDRG1KiBPoSt:
-		return C.FFIRegisteredPoStProof_StackedDrg1KiBV1, nil
-	case abi.RegisteredProof_StackedDRG16MiBPoSt:
-		return C.FFIRegisteredPoStProof_StackedDrg16MiBV1, nil
-	case abi.RegisteredProof_StackedDRG256MiBPoSt:
-		return C.FFIRegisteredPoStProof_StackedDrg256MiBV1, nil
-	case abi.RegisteredProof_StackedDRG1GiBPoSt:
-		return C.FFIRegisteredPoStProof_StackedDrg1GiBV1, nil
+	case C.FFIRegisteredPoStProof_StackedDrg2KiBV1:
+		return abi.RegisteredProof_StackedDRG2KiBPoSt, nil
+	case C.FFIRegisteredPoStProof_StackedDrg8MiBV1:
+		return abi.RegisteredProof_StackedDRG8MiBPoSt, nil
+	case C.FFIRegisteredPoStProof_StackedDrg512MiBV1:
+		return abi.RegisteredProof_StackedDRG512MiBPoSt, nil
+	case C.FFIRegisteredPoStProof_StackedDrg32GiBV1:
+		return abi.RegisteredProof_StackedDRG32GiBPoSt, nil
+	default:
+		return 0, errors.Errorf("no mapping from C.FFIRegisteredPoStProof value available for: %v", p)
+	}
+}
+
+func cRegisteredPoStProof(p abi.RegisteredProof) (C.FFIRegisteredPoStProof, error) {
+	pp, err := p.RegisteredPoStProof()
+	if err != nil {
+		return 0, err
+	}
+
+	switch pp {
+	case abi.RegisteredProof_StackedDRG2KiBPoSt:
+		return C.FFIRegisteredPoStProof_StackedDrg2KiBV1, nil
+	case abi.RegisteredProof_StackedDRG8MiBPoSt:
+		return C.FFIRegisteredPoStProof_StackedDrg8MiBV1, nil
+	case abi.RegisteredProof_StackedDRG512MiBPoSt:
+		return C.FFIRegisteredPoStProof_StackedDrg512MiBV1, nil
 	case abi.RegisteredProof_StackedDRG32GiBPoSt:
 		return C.FFIRegisteredPoStProof_StackedDrg32GiBV1, nil
 	default:
@@ -36,15 +56,18 @@ func cRegisteredPoStProof(p abi.RegisteredProof) (C.FFIRegisteredPoStProof, erro
 }
 
 func cRegisteredSealProof(p abi.RegisteredProof) (C.FFIRegisteredSealProof, error) {
-	switch p {
-	case abi.RegisteredProof_StackedDRG1KiBSeal:
-		return C.FFIRegisteredSealProof_StackedDrg1KiBV1, nil
-	case abi.RegisteredProof_StackedDRG16MiBSeal:
-		return C.FFIRegisteredSealProof_StackedDrg16MiBV1, nil
-	case abi.RegisteredProof_StackedDRG256MiBSeal:
-		return C.FFIRegisteredSealProof_StackedDrg256MiBV1, nil
-	case abi.RegisteredProof_StackedDRG1GiBSeal:
-		return C.FFIRegisteredSealProof_StackedDrg1GiBV1, nil
+	pp, err := p.RegisteredSealProof()
+	if err != nil {
+		return 0, err
+	}
+
+	switch pp {
+	case abi.RegisteredProof_StackedDRG2KiBSeal:
+		return C.FFIRegisteredSealProof_StackedDrg2KiBV1, nil
+	case abi.RegisteredProof_StackedDRG8MiBSeal:
+		return C.FFIRegisteredSealProof_StackedDrg8MiBV1, nil
+	case abi.RegisteredProof_StackedDRG512MiBSeal:
+		return C.FFIRegisteredSealProof_StackedDrg512MiBV1, nil
 	case abi.RegisteredProof_StackedDRG32GiBSeal:
 		return C.FFIRegisteredSealProof_StackedDrg32GiBV1, nil
 	default:
@@ -54,27 +77,23 @@ func cRegisteredSealProof(p abi.RegisteredProof) (C.FFIRegisteredSealProof, erro
 
 // VerifySeal returns true if the sealing operation from which its inputs were
 // derived was valid, and false if not.
-func VerifySeal(
-	proofType abi.RegisteredProof,
-	sealedCID cid.Cid,
-	unsealedCID cid.Cid,
-	proverID [32]byte,
-	ticket abi.SealRandomness,
-	seed abi.InteractiveSealRandomness,
-	sectorNum abi.SectorNumber,
-	proof abi.SealProof,
-) (bool, error) {
-	cProofType, err := cRegisteredSealProof(proofType)
+func VerifySeal(info abi.SealVerifyInfo) (bool, error) {
+	cProofType, err := cRegisteredSealProof(info.OnChain.RegisteredProof)
 	if err != nil {
 		return false, errors.Wrap(err, "failed to create registered seal proof type for FFI")
 	}
 
-	commD, err := commcid.CIDToDataCommitmentV1(unsealedCID)
+	proverID, err := toProverID(info.Miner)
+	if err != nil {
+		return false, errors.Wrap(err, "failed to convert ActorID to prover id ([32]byte) for FFI")
+	}
+
+	commD, err := commcid.CIDToDataCommitmentV1(info.UnsealedCID)
 	if err != nil {
 		return false, errors.Wrap(err, "failed to convert unsealed CID to CommD")
 	}
 
-	commR, err := commcid.CIDToReplicaCommitmentV1(sealedCID)
+	commR, err := commcid.CIDToReplicaCommitmentV1(info.OnChain.SealedCID)
 	if err != nil {
 		return false, errors.Wrap(err, "failed to convert unsealed CID to CommR")
 	}
@@ -85,16 +104,16 @@ func VerifySeal(
 	commRCBytes := C.CBytes(from32ByteArray(to32ByteArray(commR)))
 	defer C.free(commRCBytes)
 
-	proofCBytes := C.CBytes(proof.ProofBytes[:])
+	proofCBytes := C.CBytes(info.OnChain.Proof)
 	defer C.free(proofCBytes)
 
 	proverIDCBytes := C.CBytes(proverID[:])
 	defer C.free(proverIDCBytes)
 
-	ticketCBytes := C.CBytes(from32ByteArray(to32ByteArray(ticket)))
+	ticketCBytes := C.CBytes(from32ByteArray(to32ByteArray(info.Randomness)))
 	defer C.free(ticketCBytes)
 
-	seedCBytes := C.CBytes(from32ByteArray(to32ByteArray(seed)))
+	seedCBytes := C.CBytes(from32ByteArray(to32ByteArray(info.InteractiveRandomness)))
 	defer C.free(seedCBytes)
 
 	// a mutable pointer to a VerifySealResponse C-struct
@@ -105,9 +124,9 @@ func VerifySeal(
 		(*[32]C.uint8_t)(proverIDCBytes),
 		(*[32]C.uint8_t)(ticketCBytes),
 		(*[32]C.uint8_t)(seedCBytes),
-		C.uint64_t(uint64(sectorNum)),
+		C.uint64_t(uint64(info.OnChain.SectorNumber)),
 		(*C.uint8_t)(proofCBytes),
-		C.size_t(len(proof.ProofBytes)),
+		C.size_t(len(info.OnChain.Proof)),
 	)
 	defer C.destroy_verify_seal_response(resPtr)
 
@@ -120,14 +139,23 @@ func VerifySeal(
 
 // VerifyPoSt returns true if the PoSt-generation operation from which its
 // inputs were derived was valid, and false if not.
-func VerifyPoSt(
-	sectorInfo SortedPublicSectorInfo,
-	randomness abi.PoStRandomness,
-	challengeCount uint64,
-	proof []byte,
-	winners []abi.PoStCandidate,
-	proverID [32]byte,
-) (bool, error) {
+func VerifyPoSt(info abi.PoStVerifyInfo) (bool, error) {
+	psis := make([]publicSectorInfo, len(info.EligibleSectors))
+	for idx := range psis {
+		psis[idx] = publicSectorInfo{
+			PoStProofType: info.EligibleSectors[idx].RegisteredProof,
+			SealedCID:     info.EligibleSectors[idx].SealedCID,
+			SectorNum:     info.EligibleSectors[idx].SectorNumber,
+		}
+	}
+
+	sectorInfo := newSortedPublicSectorInfo(psis...)
+
+	proverID, err := toProverID(info.Prover)
+	if err != nil {
+		return false, errors.Wrap(err, "failed to convert ActorID to prover id ([32]byte) for FFI")
+	}
+
 	cInfoPtr, cInfoSize, err := cPublicReplicaInfos(sectorInfo.Values())
 	if err != nil {
 		return false, errors.Wrap(err, "failed to create public replica info for FFI")
@@ -135,13 +163,16 @@ func VerifyPoSt(
 
 	defer C.free(unsafe.Pointer(cInfoPtr))
 
-	randomnessCBytes := C.CBytes(from32ByteArray(to32ByteArray(randomness)))
+	randomnessCBytes := C.CBytes(from32ByteArray(to32ByteArray(info.Randomness)))
 	defer C.free(randomnessCBytes)
 
-	flattenedProofsCBytes := C.CBytes(proof)
-	defer C.free(flattenedProofsCBytes)
+	proofsPtr, proofsSize, cleanup, err := cPoStProofs(info.Proofs)
+	if err != nil {
+		return false, errors.Wrap(err, "failed to convert to array of C.FFIPoStProof for FFI")
+	}
+	defer cleanup()
 
-	winnersPtr, winnersSize := cCandidates(winners)
+	winnersPtr, winnersSize := cCandidates(info.Candidates)
 	defer C.free(unsafe.Pointer(winnersPtr))
 
 	proverIDCBytes := C.CBytes(proverID[:])
@@ -150,11 +181,11 @@ func VerifyPoSt(
 	// a mutable pointer to a VerifyPoStResponse C-struct
 	resPtr := C.verify_post(
 		(*[32]C.uint8_t)(randomnessCBytes),
-		C.uint64_t(challengeCount),
+		C.uint64_t(info.ChallengeCount),
 		cInfoPtr,
 		cInfoSize,
-		(*C.uint8_t)(flattenedProofsCBytes),
-		C.size_t(len(proof)),
+		proofsPtr,
+		proofsSize,
 		winnersPtr,
 		winnersSize,
 		(*[32]C.uint8_t)(proverIDCBytes),
@@ -203,30 +234,6 @@ func GenerateUnsealedCID(proofType abi.RegisteredProof, pieces []abi.PieceInfo) 
 	commD := goCommitment(&resPtr.comm_d[0])
 
 	return commcid.DataCommitmentV1ToCID(commD[:]), nil
-}
-
-func GenerateUnsealedCIDMeow(proofType abi.RegisteredProof, pieces []abi.PieceInfo) (cid.Cid, [32]byte, error) {
-	cProofType, err := cRegisteredSealProof(proofType)
-	if err != nil {
-		return cid.Undef, [32]byte{}, errors.Wrap(err, "failed to create registered seal proof type for FFI")
-	}
-
-	cPiecesPtr, cPiecesLen, err := cPublicPieceInfo(pieces)
-	if err != nil {
-		return cid.Undef, [32]byte{}, errors.Wrap(err, "failed to create public piece info array for FFI")
-	}
-	defer C.free(unsafe.Pointer(cPiecesPtr))
-
-	resPtr := C.generate_data_commitment(cProofType, (*C.FFIPublicPieceInfo)(cPiecesPtr), cPiecesLen)
-	defer C.destroy_generate_data_commitment_response(resPtr)
-
-	if resPtr.status_code != 0 {
-		return cid.Undef, [32]byte{}, errors.New(C.GoString(resPtr.error_msg))
-	}
-
-	commD := goCommitment(&resPtr.comm_d[0])
-
-	return commcid.DataCommitmentV1ToCID(commD[:]), commD, nil
 }
 
 // GeneratePieceCIDFromFile produces a piece CID for the provided data stored in
@@ -342,13 +349,18 @@ func SealPreCommitPhase1(
 	stagedSectorPath string,
 	sealedSectorPath string,
 	sectorNum abi.SectorNumber,
-	proverID [32]byte,
+	minerID abi.ActorID,
 	ticket abi.SealRandomness,
 	pieces []abi.PieceInfo,
 ) (phase1Output []byte, err error) {
 	cProofType, err := cRegisteredSealProof(proofType)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create registered seal proof type for FFI")
+	}
+
+	proverID, err := toProverID(minerID)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to convert ActorID to prover id ([32]byte) for FFI")
 	}
 
 	cCacheDirPath := C.CString(cacheDirPath)
@@ -432,8 +444,9 @@ func SealCommitPhase1(
 	sealedCID cid.Cid,
 	unsealedCID cid.Cid,
 	cacheDirPath string,
+	sealedSectorPath string,
 	sectorNum abi.SectorNumber,
-	proverID [32]byte,
+	minerID abi.ActorID,
 	ticket abi.SealRandomness,
 	seed abi.InteractiveSealRandomness,
 	pieces []abi.PieceInfo,
@@ -441,6 +454,11 @@ func SealCommitPhase1(
 	cProofType, err := cRegisteredSealProof(proofType)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create registered seal proof type for FFI")
+	}
+
+	proverID, err := toProverID(minerID)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to convert ActorID to prover id ([32]byte) for FFI")
 	}
 
 	commR, err := commcid.CIDToReplicaCommitmentV1(sealedCID)
@@ -461,6 +479,9 @@ func SealCommitPhase1(
 
 	cCacheDirPath := C.CString(cacheDirPath)
 	defer C.free(unsafe.Pointer(cCacheDirPath))
+
+	cSealedSectorPath := C.CString(sealedSectorPath)
+	defer C.free(unsafe.Pointer(cSealedSectorPath))
 
 	proverIDCBytes := C.CBytes(proverID[:])
 	defer C.free(proverIDCBytes)
@@ -483,6 +504,7 @@ func SealCommitPhase1(
 		(*[CommitmentBytesLen]C.uint8_t)(commRCBytes),
 		(*[CommitmentBytesLen]C.uint8_t)(commDCBytes),
 		cCacheDirPath,
+		cSealedSectorPath,
 		C.uint64_t(uint64(sectorNum)),
 		(*[32]C.uint8_t)(proverIDCBytes),
 		(*[32]C.uint8_t)(ticketCBytes),
@@ -503,8 +525,13 @@ func SealCommitPhase1(
 func SealCommitPhase2(
 	phase1Output []byte,
 	sectorID abi.SectorNumber,
-	proverID [32]byte,
-) (abi.SealProof, error) {
+	minerID abi.ActorID,
+) ([]byte, error) {
+	proverID, err := toProverID(minerID)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to convert ActorID to prover id ([32]byte) for FFI")
+	}
+
 	phase1OutputCBytes := C.CBytes(phase1Output)
 	defer C.free(phase1OutputCBytes)
 
@@ -520,10 +547,10 @@ func SealCommitPhase2(
 	defer C.destroy_seal_commit_phase2_response(resPtr)
 
 	if resPtr.status_code != 0 {
-		return abi.SealProof{}, errors.New(C.GoString(resPtr.error_msg))
+		return nil, errors.New(C.GoString(resPtr.error_msg))
 	}
 
-	return abi.SealProof{ProofBytes: goBytes(resPtr.proof_ptr, resPtr.proof_len)}, nil
+	return goBytes(resPtr.proof_ptr, resPtr.proof_len), nil
 }
 
 // Unseal
@@ -533,13 +560,18 @@ func Unseal(
 	sealedSectorPath string,
 	unsealOutputPath string,
 	sectorNum abi.SectorNumber,
-	proverID [32]byte,
+	minerID abi.ActorID,
 	ticket abi.SealRandomness,
 	unsealedCID cid.Cid,
 ) error {
 	cProofType, err := cRegisteredSealProof(proofType)
 	if err != nil {
 		return errors.Wrap(err, "failed to create registered seal proof type for FFI")
+	}
+
+	proverID, err := toProverID(minerID)
+	if err != nil {
+		return errors.Wrap(err, "failed to convert ActorID to prover id ([32]byte) for FFI")
 	}
 
 	commD, err := commcid.CIDToDataCommitmentV1(unsealedCID)
@@ -591,7 +623,7 @@ func UnsealRange(
 	sealedSectorPath string,
 	unsealOutputPath string,
 	sectorNum abi.SectorNumber,
-	proverID [32]byte,
+	minerID abi.ActorID,
 	ticket abi.SealRandomness,
 	unsealedCID cid.Cid,
 	offset uint64,
@@ -600,6 +632,11 @@ func UnsealRange(
 	cProofType, err := cRegisteredSealProof(proofType)
 	if err != nil {
 		return errors.Wrap(err, "failed to create registered seal proof type for FFI")
+	}
+
+	proverID, err := toProverID(minerID)
+	if err != nil {
+		return errors.Wrap(err, "failed to convert ActorID to prover id ([32]byte) for FFI")
 	}
 
 	commD, err := commcid.CIDToDataCommitmentV1(unsealedCID)
@@ -665,11 +702,16 @@ func FinalizeTicket(partialTicket abi.PartialTicket) ([32]byte, error) {
 
 // GenerateCandidates
 func GenerateCandidates(
-	proverID [32]byte,
+	minerID abi.ActorID,
 	randomness abi.PoStRandomness,
 	challengeCount uint64,
 	privateSectorInfo SortedPrivateSectorInfo,
 ) ([]PoStCandidateWithTicket, error) {
+	proverID, err := toProverID(minerID)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to convert ActorID to prover id ([32]byte) for FFI")
+	}
+
 	randomessCBytes := C.CBytes(from32ByteArray(to32ByteArray(randomness)))
 	defer C.free(randomessCBytes)
 
@@ -706,11 +748,16 @@ func GenerateCandidates(
 
 // GeneratePoSt
 func GeneratePoSt(
-	proverID [32]byte,
+	minerID abi.ActorID,
 	privateSectorInfo SortedPrivateSectorInfo,
 	randomness abi.PoStRandomness,
 	winners []abi.PoStCandidate,
-) ([]byte, error) {
+) ([]abi.PoStProof, error) {
+	proverID, err := toProverID(minerID)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to convert ActorID to prover id ([32]byte) for FFI")
+	}
+
 	replicasPtr, replicasSize, err := cPrivateReplicaInfos(privateSectorInfo.Values())
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create private replica info array for FFI")
@@ -741,7 +788,7 @@ func GeneratePoSt(
 		return nil, errors.New(C.GoString(resPtr.error_msg))
 	}
 
-	return goBytes(resPtr.flattened_proofs_ptr, resPtr.flattened_proofs_len), nil
+	return goPoStProofs(resPtr.proofs_ptr, resPtr.proofs_len)
 }
 
 // GetGPUDevices produces a slice of strings, each representing the name of a
@@ -805,12 +852,24 @@ func GetPoStVersion(
 	return C.GoString(resPtr.string_val), nil
 }
 
-// SingleProofPartitionProofLen denotes the number of bytes in a proof generated
-// with a single partition. The number of bytes in a proof increases linearly
-// with the number of partitions used when creating that proof.
-const SingleProofPartitionProofLen = 192
+// ClearCache
+func ClearCache(
+	cacheDirPath string,
+) error {
+	cCacheDirPath := C.CString(cacheDirPath)
+	defer C.free(unsafe.Pointer(cCacheDirPath))
 
-func cPublicReplicaInfos(src []PublicSectorInfo) (*C.FFIPublicReplicaInfo, C.size_t, error) {
+	resPtr := C.clear_cache(cCacheDirPath)
+	defer C.destroy_clear_cache_response(resPtr)
+
+	if resPtr.status_code != 0 {
+		return errors.New(C.GoString(resPtr.error_msg))
+	}
+
+	return nil
+}
+
+func cPublicReplicaInfos(src []publicSectorInfo) (*C.FFIPublicReplicaInfo, C.size_t, error) {
 	srcCSizeT := C.size_t(len(src))
 
 	// allocate array in C heap
@@ -910,7 +969,7 @@ func cPrivateReplicaInfos(src []PrivateSectorInfo) (*C.FFIPrivateReplicaInfo, C.
 
 	pp := (*[1 << 30]C.FFIPrivateReplicaInfo)(cPrivateReplicas)
 	for i, v := range src {
-		commR, err := commcid.CIDToReplicaCommitmentV1(v.SealedCID)
+		commR, err := commcid.CIDToReplicaCommitmentV1(v.SectorInfo.SealedCID)
 		if err != nil {
 			return (*C.FFIPrivateReplicaInfo)(unsafe.Pointer(nil)), 0, errors.Wrap(err, "failed to transform sealed CID to CommR")
 		}
@@ -926,12 +985,48 @@ func cPrivateReplicaInfos(src []PrivateSectorInfo) (*C.FFIPrivateReplicaInfo, C.
 			cache_dir_path:   C.CString(v.CacheDirPath),
 			comm_r:           *(*[CommitmentBytesLen]C.uint8_t)(unsafe.Pointer(&commRAry)),
 			replica_path:     C.CString(v.SealedSectorPath),
-			sector_id:        C.uint64_t(v.SectorNum),
+			sector_id:        C.uint64_t(v.SectorInfo.SectorNumber),
 			registered_proof: proofType,
 		}
 	}
 
 	return (*C.FFIPrivateReplicaInfo)(cPrivateReplicas), srcCSizeT, nil
+}
+
+func cPoStProofs(src []abi.PoStProof) (*C.FFIPoStProof, C.size_t, func(), error) {
+	srcCSizeT := C.size_t(len(src))
+
+	cPoStProofs := C.malloc(srcCSizeT * C.sizeof_FFIPoStProof)
+
+	var ptrs []unsafe.Pointer
+
+	cleanup := func() {
+		C.free(cPoStProofs)
+
+		for idx := range ptrs {
+			C.free(ptrs[idx])
+		}
+	}
+
+	pp := (*[1 << 30]C.FFIPoStProof)(cPoStProofs)
+	for i, v := range src {
+		proofType, err := cRegisteredPoStProof(v.RegisteredProof)
+		if err != nil {
+			cleanup()
+			return (*C.FFIPoStProof)(unsafe.Pointer(nil)), 0, func() {}, errors.Wrap(err, "failed to create PoSt proof type")
+		}
+
+		proofBytes := C.CBytes(v.ProofBytes)
+		ptrs = append(ptrs, unsafe.Pointer(proofBytes))
+
+		pp[i] = C.FFIPoStProof{
+			proof_ptr:        (*C.uint8_t)(proofBytes),
+			proof_len:        C.size_t(len(v.ProofBytes)),
+			registered_proof: proofType,
+		}
+	}
+
+	return (*C.FFIPoStProof)(cPoStProofs), srcCSizeT, cleanup, nil
 }
 
 func goBytes(src *C.uint8_t, size C.size_t) []byte {
@@ -968,6 +1063,37 @@ func goCandidateWithTicket(src C.FFICandidate) PoStCandidateWithTicket {
 	}
 }
 
+func goPoStProofs(src *C.FFIPoStProof, size C.size_t) ([]abi.PoStProof, error) {
+	proofs := make([]abi.PoStProof, size)
+	if src == nil || size == 0 {
+		return proofs, nil
+	}
+
+	ptrs := (*[1 << 30]C.FFIPoStProof)(unsafe.Pointer(src))[:size:size]
+	for i := 0; i < int(size); i++ {
+		proof, err := goPoStProof(ptrs[i])
+		if err != nil {
+			return nil, err
+		}
+
+		proofs[i] = proof
+	}
+
+	return proofs, nil
+}
+
+func goPoStProof(src C.FFIPoStProof) (abi.PoStProof, error) {
+	rp, err := goRegisteredPoStProof(src.registered_proof)
+	if err != nil {
+		return abi.PoStProof{}, err
+	}
+
+	return abi.PoStProof{
+		RegisteredProof: rp,
+		ProofBytes:      C.GoBytes(unsafe.Pointer(src.proof_ptr), C.int(src.proof_len)),
+	}, nil
+}
+
 func goCommitment(src *C.uint8_t) [CommitmentBytesLen]byte {
 	return to32ByteArray(C.GoBytes(unsafe.Pointer(src), 32))
 }
@@ -981,4 +1107,16 @@ func to32ByteArray(in []byte) [32]byte {
 
 func from32ByteArray(in [32]byte) []byte {
 	return in[:]
+}
+
+func toProverID(minerID abi.ActorID) ([32]byte, error) {
+	maddr, err := address.NewIDAddress(uint64(minerID))
+	if err != nil {
+		return [32]byte{}, err
+	}
+
+	var proverID [32]byte
+	copy(proverID[:], maddr.Payload())
+
+	return proverID, nil
 }

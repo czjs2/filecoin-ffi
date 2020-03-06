@@ -21,10 +21,10 @@ import (
 
 func TestProofsLifecycle(t *testing.T) {
 	challengeCount := uint64(2)
-	proverID := [32]byte{6, 7, 8}
+	minerID := abi.ActorID(42)
 	randomness := [32]byte{9, 9, 9}
-	sealProofType := abi.RegisteredProof_StackedDRG1KiBSeal
-	postProofType := abi.RegisteredProof_StackedDRG1KiBPoSt
+	sealProofType := abi.RegisteredProof_StackedDRG2KiBSeal
+	postProofType := abi.RegisteredProof_StackedDRG2KiBPoSt
 	sectorNum := abi.SectorNumber(42)
 
 	ticket := abi.SealRandomness{5, 4, 2}
@@ -66,7 +66,7 @@ func TestProofsLifecycle(t *testing.T) {
 	defer unsealOutputFileD.Close()
 
 	// some rando bytes
-	someBytes := make([]byte, 1016)
+	someBytes := make([]byte, abi.PaddedPieceSize(2048).Unpadded())
 	_, err := io.ReadFull(rand.Reader, someBytes)
 	require.NoError(t, err)
 
@@ -88,9 +88,9 @@ func TestProofsLifecycle(t *testing.T) {
 
 	// write second piece + alignment
 	require.NoError(t, err)
-	pieceFileB := requireTempFile(t, bytes.NewReader(someBytes[0:508]), 508)
+	pieceFileB := requireTempFile(t, bytes.NewReader(someBytes[0:1016]), 1016)
 
-	pieceCIDB, err := GeneratePieceCIDFromFile(sealProofType, pieceFileB, 508)
+	pieceCIDB, err := GeneratePieceCIDFromFile(sealProofType, pieceFileB, 1016)
 	require.NoError(t, err)
 
 	// seek back to head
@@ -98,17 +98,17 @@ func TestProofsLifecycle(t *testing.T) {
 	require.NoError(t, err)
 
 	// second piece relies on the alignment-computing version
-	left, tot, pieceCID, err := WriteWithAlignment(sealProofType, pieceFileB, 508, stagedSectorFile, []abi.UnpaddedPieceSize{127})
+	left, tot, pieceCID, err := WriteWithAlignment(sealProofType, pieceFileB, 1016, stagedSectorFile, []abi.UnpaddedPieceSize{127})
 	require.NoError(t, err)
-	require.Equal(t, int(left), 381)
-	require.Equal(t, int(tot), 889)
+	require.Equal(t, 889, int(left))
+	require.Equal(t, 1905, int(tot))
 	require.Equal(t, pieceCID, pieceCIDB)
 
 	publicPieces := []abi.PieceInfo{{
 		Size:     abi.UnpaddedPieceSize(127).Padded(),
 		PieceCID: pieceCIDA,
 	}, {
-		Size:     abi.UnpaddedPieceSize(508).Padded(),
+		Size:     abi.UnpaddedPieceSize(1016).Padded(),
 		PieceCID: pieceCIDB,
 	}}
 
@@ -116,7 +116,7 @@ func TestProofsLifecycle(t *testing.T) {
 	require.NoError(t, err)
 
 	// pre-commit the sector
-	sealPreCommitPhase1Output, err := SealPreCommitPhase1(sealProofType, sectorCacheDirPath, stagedSectorFile.Name(), sealedSectorFile.Name(), sectorNum, proverID, ticket, publicPieces)
+	sealPreCommitPhase1Output, err := SealPreCommitPhase1(sealProofType, sectorCacheDirPath, stagedSectorFile.Name(), sealedSectorFile.Name(), sectorNum, minerID, ticket, publicPieces)
 	require.NoError(t, err)
 
 	sealedCID, unsealedCID, err := SealPreCommitPhase2(sealPreCommitPhase1Output, sectorCacheDirPath, sealedSectorFile.Name())
@@ -125,32 +125,49 @@ func TestProofsLifecycle(t *testing.T) {
 	require.Equal(t, unsealedCID, preGeneratedUnsealedCID, "prover and verifier should agree on data commitment")
 
 	// commit the sector
-	sealCommitPhase1Output, err := SealCommitPhase1(sealProofType, sealedCID, unsealedCID, sectorCacheDirPath, sectorNum, proverID, ticket, seed, publicPieces)
+	sealCommitPhase1Output, err := SealCommitPhase1(sealProofType, sealedCID, unsealedCID, sectorCacheDirPath, sealedSectorFile.Name(), sectorNum, minerID, ticket, seed, publicPieces)
 	require.NoError(t, err)
 
-	proof, err := SealCommitPhase2(sealCommitPhase1Output, sectorNum, proverID)
+	proof, err := SealCommitPhase2(sealCommitPhase1Output, sectorNum, minerID)
 	require.NoError(t, err)
 
 	// verify the 'ole proofy
-	isValid, err := VerifySeal(sealProofType, sealedCID, unsealedCID, proverID, ticket, seed, sectorNum, proof)
+	isValid, err := VerifySeal(abi.SealVerifyInfo{
+		SectorID: abi.SectorID{
+			Miner:  minerID,
+			Number: sectorNum,
+		},
+		OnChain: abi.OnChainSealVerifyInfo{
+			SealedCID:        sealedCID,
+			InteractiveEpoch: abi.ChainEpoch(42),
+			RegisteredProof:  sealProofType,
+			Proof:            proof,
+			DealIDs:          []abi.DealID{},
+			SectorNumber:     sectorNum,
+			SealRandEpoch:    abi.ChainEpoch(42),
+		},
+		Randomness:            ticket,
+		InteractiveRandomness: seed,
+		UnsealedCID:           unsealedCID,
+	})
 	require.NoError(t, err)
 	require.True(t, isValid, "proof wasn't valid")
 
 	// unseal the entire sector and verify that things went as we planned
-	require.NoError(t, Unseal(sealProofType, sectorCacheDirPath, sealedSectorFile.Name(), unsealOutputFileA.Name(), sectorNum, proverID, ticket, unsealedCID))
+	require.NoError(t, Unseal(sealProofType, sectorCacheDirPath, sealedSectorFile.Name(), unsealOutputFileA.Name(), sectorNum, minerID, ticket, unsealedCID))
 	contents, err := ioutil.ReadFile(unsealOutputFileA.Name())
 	require.NoError(t, err)
 
 	// unsealed sector includes a bunch of alignment NUL-bytes
-	alignment := make([]byte, 381)
+	alignment := make([]byte, 889)
 
 	// verify that we unsealed what we expected to unseal
 	require.Equal(t, someBytes[0:127], contents[0:127])
-	require.Equal(t, alignment, contents[127:508])
-	require.Equal(t, someBytes[0:508], contents[508:1016])
+	require.Equal(t, alignment, contents[127:1016])
+	require.Equal(t, someBytes[0:1016], contents[1016:2032])
 
 	// unseal just the first piece
-	err = UnsealRange(sealProofType, sectorCacheDirPath, sealedSectorFile.Name(), unsealOutputFileB.Name(), sectorNum, proverID, ticket, unsealedCID, 0, 127)
+	err = UnsealRange(sealProofType, sectorCacheDirPath, sealedSectorFile.Name(), unsealOutputFileB.Name(), sectorNum, minerID, ticket, unsealedCID, 0, 127)
 	require.NoError(t, err)
 	contentsB, err := ioutil.ReadFile(unsealOutputFileB.Name())
 	require.NoError(t, err)
@@ -158,12 +175,12 @@ func TestProofsLifecycle(t *testing.T) {
 	require.Equal(t, someBytes[0:127], contentsB[0:127])
 
 	// unseal just the second piece
-	err = UnsealRange(sealProofType, sectorCacheDirPath, sealedSectorFile.Name(), unsealOutputFileC.Name(), sectorNum, proverID, ticket, unsealedCID, 508, 508)
+	err = UnsealRange(sealProofType, sectorCacheDirPath, sealedSectorFile.Name(), unsealOutputFileC.Name(), sectorNum, minerID, ticket, unsealedCID, 1016, 1016)
 	require.NoError(t, err)
 	contentsC, err := ioutil.ReadFile(unsealOutputFileC.Name())
 	require.NoError(t, err)
-	require.Equal(t, 508, len(contentsC))
-	require.Equal(t, someBytes[0:508], contentsC[0:508])
+	require.Equal(t, 1016, len(contentsC))
+	require.Equal(t, someBytes[0:1016], contentsC[0:1016])
 
 	// verify that the sector builder owns no sealed sectors
 	var sealedSectorPaths []string
@@ -178,20 +195,22 @@ func TestProofsLifecycle(t *testing.T) {
 	// generate a PoSt over the proving set before importing, just to exercise
 	// the new API
 	privateInfo := NewSortedPrivateSectorInfo(PrivateSectorInfo{
+		SectorInfo: abi.SectorInfo{
+			SectorNumber: sectorNum,
+			SealedCID:    sealedCID,
+		},
 		CacheDirPath:     sectorCacheDirPath,
-		SealedCID:        sealedCID,
 		PoStProofType:    postProofType,
 		SealedSectorPath: sealedSectorFile.Name(),
-		SectorNum:        sectorNum,
 	})
 
-	publicInfo := NewSortedPublicSectorInfo(PublicSectorInfo{
-		SealedCID:     sealedCID,
-		PoStProofType: postProofType,
-		SectorNum:     sectorNum,
-	})
+	eligibleSectors := []abi.SectorInfo{{
+		RegisteredProof: sealProofType,
+		SectorNumber:    sectorNum,
+		SealedCID:       sealedCID,
+	}}
 
-	candidatesWithTicketsA, err := GenerateCandidates(proverID, randomness[:], challengeCount, privateInfo)
+	candidatesWithTicketsA, err := GenerateCandidates(minerID, randomness[:], challengeCount, privateInfo)
 	require.NoError(t, err)
 
 	candidatesA := make([]abi.PoStCandidate, len(candidatesWithTicketsA))
@@ -204,19 +223,26 @@ func TestProofsLifecycle(t *testing.T) {
 	_, err = FinalizeTicket(candidatesA[0].PartialTicket)
 	require.NoError(t, err)
 
-	proofA, err := GeneratePoSt(proverID, privateInfo, randomness[:], candidatesA)
+	proofs, err := GeneratePoSt(minerID, privateInfo, randomness[:], candidatesA)
 	require.NoError(t, err)
 
-	isValid, err = VerifyPoSt(publicInfo, randomness[:], challengeCount, proofA, candidatesA, proverID)
+	isValid, err = VerifyPoSt(abi.PoStVerifyInfo{
+		Randomness:      randomness[:],
+		Candidates:      candidatesA,
+		Proofs:          proofs,
+		EligibleSectors: eligibleSectors,
+		Prover:          minerID,
+		ChallengeCount:  challengeCount,
+	})
 	require.NoError(t, err)
 	require.True(t, isValid, "VerifyPoSt rejected the (standalone) proof as invalid")
 }
 
 func TestJsonMarshalSymmetry(t *testing.T) {
 	for i := 0; i < 100; i++ {
-		xs := make([]PublicSectorInfo, 10)
+		xs := make([]publicSectorInfo, 10)
 		for j := 0; j < 10; j++ {
-			var x PublicSectorInfo
+			var x publicSectorInfo
 			var commR [32]byte
 			_, err := io.ReadFull(rand.Reader, commR[:])
 			require.NoError(t, err)
@@ -228,7 +254,7 @@ func TestJsonMarshalSymmetry(t *testing.T) {
 			x.SectorNum = abi.SectorNumber(n.Uint64())
 			xs[j] = x
 		}
-		toSerialize := NewSortedPublicSectorInfo(xs...)
+		toSerialize := newSortedPublicSectorInfo(xs...)
 
 		serialized, err := toSerialize.MarshalJSON()
 		require.NoError(t, err)
@@ -249,10 +275,9 @@ func TestGetGPUDevicesDoesNotProduceAnError(t *testing.T) {
 
 func TestRegisteredSealProofFunctions(t *testing.T) {
 	sealTypes := []abi.RegisteredProof{
-		abi.RegisteredProof_StackedDRG16MiBSeal,
-		abi.RegisteredProof_StackedDRG1GiBSeal,
-		abi.RegisteredProof_StackedDRG1KiBSeal,
-		abi.RegisteredProof_StackedDRG256MiBSeal,
+		abi.RegisteredProof_StackedDRG8MiBSeal,
+		abi.RegisteredProof_StackedDRG2KiBSeal,
+		abi.RegisteredProof_StackedDRG512MiBSeal,
 		abi.RegisteredProof_StackedDRG32GiBSeal,
 	}
 
@@ -265,10 +290,9 @@ func TestRegisteredSealProofFunctions(t *testing.T) {
 
 func TestRegisteredPoStProofFunctions(t *testing.T) {
 	postTypes := []abi.RegisteredProof{
-		abi.RegisteredProof_StackedDRG16MiBPoSt,
-		abi.RegisteredProof_StackedDRG1GiBPoSt,
-		abi.RegisteredProof_StackedDRG1KiBPoSt,
-		abi.RegisteredProof_StackedDRG256MiBPoSt,
+		abi.RegisteredProof_StackedDRG8MiBPoSt,
+		abi.RegisteredProof_StackedDRG2KiBPoSt,
+		abi.RegisteredProof_StackedDRG512MiBPoSt,
 		abi.RegisteredProof_StackedDRG32GiBPoSt,
 	}
 
