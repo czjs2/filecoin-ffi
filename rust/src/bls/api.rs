@@ -218,21 +218,24 @@ pub unsafe extern "C" fn fil_hash_verify(
     if raw_public_keys.len() % PUBLIC_KEY_BYTES != 0 {
         return 0;
     }
+    let cpus = num_cpus::get();
+    let pool = rayon::ThreadPoolBuilder::new().num_threads(cpus).build().expect("failed creating pool");
+    pool.install(|| {
+        let digests: Vec<_> = messages
+            .into_par_iter()
+            .map(|message: &[u8]| hash_sig(message))
+            .collect::<Vec<_>>();
 
-    let digests: Vec<_> = messages
-        .into_par_iter()
-        .map(|message: &[u8]| hash_sig(message))
-        .collect::<Vec<_>>();
+        let public_keys: Vec<_> = try_ffi!(
+            raw_public_keys
+                .par_chunks(PUBLIC_KEY_BYTES)
+                .map(|item| { PublicKey::from_bytes(item) })
+                .collect::<Result<_, _>>(),
+            0
+        );
 
-    let public_keys: Vec<_> = try_ffi!(
-        raw_public_keys
-            .par_chunks(PUBLIC_KEY_BYTES)
-            .map(|item| { PublicKey::from_bytes(item) })
-            .collect::<Result<_, _>>(),
-        0
-    );
-
-    verify_sig(&signature, &digests, &public_keys) as libc::c_int
+        verify_sig(&signature, &digests, &public_keys) as libc::c_int
+    })
 }
 
 /// Generate a new private key
