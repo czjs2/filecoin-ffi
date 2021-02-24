@@ -34,27 +34,24 @@ pub unsafe fn to_public_replica_info_map(
             comm_r: ffi_info.comm_r,
         });
     }
-    let pool = rayon::ThreadPoolBuilder::new().num_threads(num_cpus::get()).build().expect("thread pool build failed");
-    pool.install(||{
-        let map = replicas
-            .into_par_iter()
-            .map(|info| {
-                let PublicReplicaInfoTmp {
-                    registered_proof,
-                    comm_r,
-                    sector_id,
-                } = info;
 
-                (
-                    SectorId::from(sector_id),
-                    PublicReplicaInfo::new(registered_proof.into(), comm_r),
-                )
-            })
-            .collect();
+    let map = replicas
+        .into_par_iter()
+        .map(|info| {
+            let PublicReplicaInfoTmp {
+                registered_proof,
+                comm_r,
+                sector_id,
+            } = info;
 
-        Ok(map)
-    })
+            (
+                SectorId::from(sector_id),
+                PublicReplicaInfo::new(registered_proof.into(), comm_r),
+            )
+        })
+        .collect();
 
+    Ok(map)
 }
 
 #[derive(Debug, Clone)]
@@ -89,33 +86,31 @@ pub unsafe fn to_private_replica_info_map(
             }
         })
         .collect();
-    let pool = rayon::ThreadPoolBuilder::new().num_threads(num_cpus::get()).build().expect("thread pool build failed");
-    pool.install(|| {
-        let map = replicas
-            .into_par_iter()
-            .map(|info| {
-                let PrivateReplicaInfoTmp {
-                    registered_proof,
-                    cache_dir_path,
+
+    let map = replicas
+        .into_par_iter()
+        .map(|info| {
+            let PrivateReplicaInfoTmp {
+                registered_proof,
+                cache_dir_path,
+                comm_r,
+                replica_path,
+                sector_id,
+            } = info;
+
+            (
+                SectorId::from(sector_id),
+                PrivateReplicaInfo::new(
+                    registered_proof.into(),
                     comm_r,
+                    cache_dir_path,
                     replica_path,
-                    sector_id,
-                } = info;
+                ),
+            )
+        })
+        .collect();
 
-                (
-                    SectorId::from(sector_id),
-                    PrivateReplicaInfo::new(
-                        registered_proof.into(),
-                        comm_r,
-                        cache_dir_path,
-                        replica_path,
-                    ),
-                )
-            })
-            .collect();
-
-        Ok(map)
-    })
+    Ok(map)
 }
 
 pub unsafe fn c_to_rust_post_proofs(

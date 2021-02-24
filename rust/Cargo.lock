@@ -2,9 +2,9 @@
 # It is not intended for manual editing.
 [[package]]
 name = "addr2line"
-version = "0.14.0"
+version = "0.14.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7c0929d69e78dd9bf5408269919fcbcaeb2e35e5d43e5815517cdc6a8e11a423"
+checksum = "a55f82cfe485775d02112886f4169bde0c5894d75e79ead7eafe7e40a25e45f7"
 dependencies = [
  "gimli",
 ]
@@ -72,9 +72,9 @@ dependencies = [
 
 [[package]]
 name = "anyhow"
-version = "1.0.34"
+version = "1.0.38"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bf8dcb5b4bbaa28653b647d8c77bd4ed40183b48882e130c1f1ffb73de069fd7"
+checksum = "afddf7f520a80dbf76e6f50a35bca42a2331ef227a28b3b6dc5c2e2338d114b1"
 
 [[package]]
 name = "arrayref"
@@ -87,113 +87,6 @@ name = "arrayvec"
 version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "23b62fc65de8e4e7f52534fb52b0f3ed04746ae267519eef2a83941e8085068b"
-
-[[package]]
-name = "async-channel"
-version = "1.5.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "59740d83946db6a5af71ae25ddf9562c2b176b2ca42cf99a455f09f4a220d6b9"
-dependencies = [
- "concurrent-queue",
- "event-listener",
- "futures-core",
-]
-
-[[package]]
-name = "async-executor"
-version = "1.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "eb877970c7b440ead138f6321a3b5395d6061183af779340b65e20c0fede9146"
-dependencies = [
- "async-task",
- "concurrent-queue",
- "fastrand",
- "futures-lite",
- "once_cell",
- "vec-arena",
-]
-
-[[package]]
-name = "async-global-executor"
-version = "1.4.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "73079b49cd26b8fd5a15f68fc7707fc78698dc2a3d61430f2a7a9430230dfa04"
-dependencies = [
- "async-executor",
- "async-io",
- "futures-lite",
- "num_cpus",
- "once_cell",
-]
-
-[[package]]
-name = "async-io"
-version = "1.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "40a0b2bb8ae20fede194e779150fe283f65a4a08461b496de546ec366b174ad9"
-dependencies = [
- "concurrent-queue",
- "fastrand",
- "futures-lite",
- "libc",
- "log",
- "nb-connect",
- "once_cell",
- "parking",
- "polling",
- "vec-arena",
- "waker-fn",
- "winapi 0.3.9",
-]
-
-[[package]]
-name = "async-mutex"
-version = "1.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "479db852db25d9dbf6204e6cb6253698f175c15726470f78af0d918e99d6156e"
-dependencies = [
- "event-listener",
-]
-
-[[package]]
-name = "async-std"
-version = "1.8.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8f9f84f1280a2b436a2c77c2582602732b6c2f4321d5494d6e799e6c367859a8"
-dependencies = [
- "async-channel",
- "async-global-executor",
- "async-io",
- "async-mutex",
- "blocking",
- "crossbeam-utils 0.8.0",
- "futures-channel",
- "futures-core",
- "futures-io",
- "futures-lite",
- "gloo-timers",
- "kv-log-macro",
- "log",
- "memchr",
- "num_cpus",
- "once_cell",
- "pin-project-lite 0.2.0",
- "pin-utils",
- "slab",
- "wasm-bindgen-futures",
-]
-
-[[package]]
-name = "async-task"
-version = "4.0.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e91831deabf0d6d7ec49552e489aed63b7456a7a3c46cff62adad428110b0af0"
-
-[[package]]
-name = "atomic-waker"
-version = "1.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "065374052e7df7ee4047b1160cca5e1467a12351a40b3da123c870ba0b8eda2a"
 
 [[package]]
 name = "atty"
@@ -214,9 +107,9 @@ checksum = "cdb031dd78e28731d87d56cc8ffef4a8f36ca26c38fe2de700543e627f8a464a"
 
 [[package]]
 name = "backtrace"
-version = "0.3.55"
+version = "0.3.56"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ef5140344c85b01f9bbb4d4b7288a8aa4b3287ccef913a14bcc78a1063623598"
+checksum = "9d117600f438b1707d4e4ae15d3595657288f8235a0eb593e80ecc98ab34e1bc"
 dependencies = [
  "addr2line",
  "cfg-if 1.0.0",
@@ -234,12 +127,14 @@ checksum = "904dfeac50f3cdaba28fc6f57fdcddb75f49ed61346676a78c4ffe55877802fd"
 
 [[package]]
 name = "bellperson"
-version = "0.12.3"
+version = "0.12.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6c53631e678154f40b6d1b986e6ab638172d1b6aa992e49498567f90f64b483a"
 dependencies = [
  "bit-vec",
  "blake2s_simd",
  "blstrs",
- "byteorder 1.3.4",
+ "byteorder 1.4.2",
  "core_affinity",
  "crossbeam-channel 0.5.0",
  "ff-cl-gen",
@@ -251,9 +146,9 @@ dependencies = [
  "lazy_static",
  "log",
  "memmap",
- "mempool 0.1.3",
+ "mempool",
  "num_cpus",
- "paired 0.21.0",
+ "paired",
  "rand 0.7.3",
  "rand_core 0.5.1",
  "rayon",
@@ -270,15 +165,15 @@ version = "1.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f30d3a39baa26f9651f17b375061f3233dde33424a8b72b0dbe93a68a0bc896d"
 dependencies = [
- "byteorder 1.3.4",
+ "byteorder 1.4.2",
  "serde",
 ]
 
 [[package]]
 name = "bit-vec"
-version = "0.6.2"
+version = "0.6.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5f0dc55f2d8a1a85650ac47858bb001b4c0dd73d79e3c455a842925e68d29cd3"
+checksum = "349f9b6a179ed607305526ca489b34ad0a41aed5f7980fa90eb03160b69598fb"
 
 [[package]]
 name = "bitflags"
@@ -305,19 +200,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "41262f11d771fd4a61aa3ce019fca363b4b6c282fca9da2a31186d3965a47a5c"
 dependencies = [
  "either",
- "radium 0.3.0",
-]
-
-[[package]]
-name = "bitvec"
-version = "0.19.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a7ba35e9565969edb811639dbebfe34edc0368e472c5018474c8eb2543397f81"
-dependencies = [
- "funty",
- "radium 0.5.3",
- "tap",
- "wyz",
+ "radium",
 ]
 
 [[package]]
@@ -350,7 +233,7 @@ checksum = "c0940dc441f31689269e10ac70eb1002a3a1d3ad1390e030043662eb7fe4688b"
 dependencies = [
  "block-padding 0.1.5",
  "byte-tools",
- "byteorder 1.3.4",
+ "byteorder 1.4.2",
  "generic-array 0.12.3",
 ]
 
@@ -389,52 +272,36 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8d696c370c750c948ada61c69a0ee2cbbb9c50b1019ddb86d9317157a99c2cae"
 
 [[package]]
-name = "blocking"
-version = "1.0.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c5e170dbede1f740736619b776d7251cb1b9095c435c34d8ca9f57fcd2f335e9"
-dependencies = [
- "async-channel",
- "async-task",
- "atomic-waker",
- "fastrand",
- "futures-lite",
- "once_cell",
-]
-
-[[package]]
 name = "bls-signatures"
-version = "0.6.1"
+version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "863020d4fead1c6090d754cf542cd723c124859543f595c65e8c6f11377a4223"
+checksum = "2a1f770b1f05de85e079fa775dee8b5025c36cff5b4d8bd2c9ad9c134d16de5b"
 dependencies = [
+ "blst",
+ "blstrs",
  "fff",
  "groupy",
- "hkdf 0.8.0",
- "paired 0.20.1",
  "rand_core 0.5.1",
  "rayon",
- "sha2ni",
  "thiserror",
 ]
 
 [[package]]
 name = "blst"
-version = "0.3.2"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b1f4904512207f2ac5208e5f679106c9e3aa45e4aca9774beda779eab5f522cb"
+checksum = "7ce0ad2fe12998eb01f41b8ba29e697927b26b5ce04b60856bd8254658ba0fbb"
 dependencies = [
  "cc",
  "glob",
  "threadpool",
- "zeroize 1.2.0",
 ]
 
 [[package]]
 name = "blstrs"
-version = "0.2.1"
+version = "0.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "489bcee96b8452ada4aa7a835423289cef00c9b4166d53f3d2a6063c19833926"
+checksum = "3772c44fcecaa3a00fda7707507d9363e6edd21f6d66cbcc0ef6f908f43dda27"
 dependencies = [
  "blst",
  "fff",
@@ -445,9 +312,9 @@ dependencies = [
 
 [[package]]
 name = "bumpalo"
-version = "3.4.0"
+version = "3.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2e8c087f005730276d1096a652e92a8bacee2e2472bcc9715a74d2bec38b5820"
+checksum = "099e596ef14349721d9016f6b80dd3419ea1bf289ab9b44df8e4dfd3a005d5d9"
 
 [[package]]
 name = "byte-slice-cast"
